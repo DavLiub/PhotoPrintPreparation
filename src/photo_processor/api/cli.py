@@ -54,5 +54,8 @@ def run_cli() -> int:
 
     for message in result.messages:
         print(message)
+    for item in result.items:
+        for warning in item.warnings:
+            print(f"WARNING {item.source_path}: {warning}")
 
     return 0 if result.error_files == 0 else 1

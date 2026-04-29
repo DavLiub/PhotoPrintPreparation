@@ -12,6 +12,7 @@ The current repository implements the first technical slice of the product:
 - source scanning and output naming in `src/photo_processor/infra/filesystem/`
 - one-image processing in `src/photo_processor/infra/imaging/`
 - batch orchestration and result aggregation in `src/photo_processor/app/use_cases/batch_processing.py`
+- per-file structured results in `src/photo_processor/core/single_image_result.py`
 - unit and integration tests for math, paths, planning, and one-image processing in `tests/`
 
 ## Planned next
@@ -19,7 +20,6 @@ The current repository implements the first technical slice of the product:
 The code still has planned gaps:
 
 - GUI, preview, settings persistence, and packaging are not implemented yet
-- per-file structured result reporting is not implemented yet
 - advanced output policies and presets are not implemented yet
 
 ## Convergence with product specification

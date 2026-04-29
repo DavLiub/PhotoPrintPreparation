@@ -3,6 +3,7 @@ from __future__ import annotations
 from photo_processor.core.image_task import ImageTask
 from photo_processor.core.processing_result import BatchProcessingResult
 from photo_processor.core.settings import ProcessingSettings
+from photo_processor.core.single_image_result import SingleImageResult
 from photo_processor.infra.filesystem.file_scanner import scan_supported_images
 from photo_processor.infra.filesystem.output_path_builder import build_output_path
 from photo_processor.infra.imaging.image_processor import ImageProcessor
@@ -19,8 +20,14 @@ class BatchProcessingUseCase:
         result.found_files = len(files)
 
         if not self.settings.source_folder.exists():
-            result.error_files = 1
-            result.messages.append(f"Source folder does not exist: {self.settings.source_folder}")
+            result.add_item(
+                SingleImageResult(
+                    source_path=self.settings.source_folder,
+                    output_path=self.settings.output_folder,
+                    success=False,
+                    error_message=f"Source folder does not exist: {self.settings.source_folder}",
+                )
+            )
             return result
 
         self.settings.output_folder.mkdir(parents=True, exist_ok=True)
@@ -35,20 +42,25 @@ class BatchProcessingUseCase:
             task = ImageTask(source_path=source_path, output_path=output_path)
 
             if dry_run:
-                result.processed_files += 1
-                result.messages.append(f"DRY RUN {source_path} -> {output_path}")
+                result.add_item(
+                    SingleImageResult(
+                        source_path=source_path,
+                        output_path=output_path,
+                        success=True,
+                        warnings=["Dry run: output file was not written."],
+                    )
+                )
                 continue
 
             try:
-                self.image_processor.process(task)
-            except NotImplementedError as exc:
-                result.error_files += 1
-                result.messages.append(str(exc))
-                break
+                item = self.image_processor.process(task)
             except Exception as exc:  # pragma: no cover - defensive reporting
-                result.error_files += 1
-                result.messages.append(f"ERROR {source_path}: {exc}")
-            else:
-                result.processed_files += 1
+                item = SingleImageResult(
+                    source_path=source_path,
+                    output_path=output_path,
+                    success=False,
+                    error_message=str(exc),
+                )
+            result.add_item(item)
 
         return result

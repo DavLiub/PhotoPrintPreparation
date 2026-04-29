@@ -37,9 +37,14 @@ class ImageProcessorTestCase(unittest.TestCase):
             max_file_size_mb=1.0,
         )
 
-        ImageProcessor(settings).process(ImageTask(source_path=source_path, output_path=output_path))
+        result_info = ImageProcessor(settings).process(ImageTask(source_path=source_path, output_path=output_path))
 
         self.assertTrue(output_path.exists())
+        self.assertTrue(result_info.success)
+        self.assertEqual(result_info.target_size, (1500, 1000))
+        self.assertEqual(result_info.output_size, (1500, 1000))
+        self.assertIsNotNone(result_info.output_file_size_bytes)
+        self.assertIsNotNone(result_info.output_quality)
         with Image.open(output_path) as result:
             self.assertEqual(result.format, "JPEG")
             self.assertEqual(result.size, (1500, 1000))
@@ -64,8 +69,9 @@ class ImageProcessorTestCase(unittest.TestCase):
             max_file_size_mb=1.0,
         )
 
-        ImageProcessor(settings).process(ImageTask(source_path=source_path, output_path=output_path))
+        result_info = ImageProcessor(settings).process(ImageTask(source_path=source_path, output_path=output_path))
 
+        self.assertEqual(result_info.target_size, (1000, 1500))
         with Image.open(output_path) as result:
             self.assertEqual(result.size, (1000, 1500))
 

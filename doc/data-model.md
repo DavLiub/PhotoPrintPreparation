@@ -43,7 +43,17 @@ Defined in `src/photo_processor/core/processing_result.py`.
 Purpose:
 
 - aggregate processing counters
+- keep per-file processing items
 - expose human-readable log messages for CLI and later GUI
+
+### SingleImageResult
+
+Defined in `src/photo_processor/core/single_image_result.py`.
+
+Purpose:
+
+- describe one processed file or one failed file
+- carry warnings, output metadata, and future GUI-facing details
 
 ## Intended evolution
 
@@ -58,5 +68,4 @@ The current core model set is acceptable for a small prototype, but the target a
 - `FrameSize` value object with unit-aware conversion
 - `OutputPolicy` for suffix, format, and overwrite behavior
 - `ImageInfo` for width, height, EXIF orientation, and mode
-- `SingleImageResult` for success, warning, or error per file
 - `ProcessingReport` for batch-level summary plus per-file details
