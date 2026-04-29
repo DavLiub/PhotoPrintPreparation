@@ -29,7 +29,9 @@ python -m photo_processor --source "C:\Photos" --dry-run
 
 ## Layout
 
-- `src/photo_processor/` application package
+- `src/` source container for the Python project
+- `src/photo_processor/` root application package
+- `src/photo_processor/api`, `app`, `core`, `infra`, `bootstrap`, `config` application layers
 - `tests/` unit tests for core rules
 - `build.bat` placeholder for packaging flow
 - `run.bat` local CLI launcher

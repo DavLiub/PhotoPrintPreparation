@@ -2,19 +2,26 @@
 
 ## Current state
 
-The repository currently contains a core-first Python package under `src/photo_processor/`:
+The repository uses the standard Python `src/` layout:
 
-- `main.py` as the CLI bootstrap
-- `models/` for settings and processing result structures
-- `core/` for resize and orientation logic plus batch orchestration
-- `services/` for file scanning and output path generation
-- `utils/` for low-level unit conversion helpers
+- `src/` is the source container
+- `src/photo_processor/` is the root application package
+- the package is split into architectural layers inside that root package
 
-This is enough for `0.1` core prototyping, but it does not yet match the target layered structure from the product specification.
+This means `photo_processor` is not an extra layer. It is the application namespace. The real layers of the project are:
+
+- `api/`
+- `app/`
+- `core/`
+- `infra/`
+- `bootstrap/`
+- `config/`
+
+This structure already reflects the intended direction from the product specification.
 
 ## Target layering
 
-The preferred package direction for `src/` is:
+Inside `src/photo_processor/`, use the following responsibilities:
 
 - `api/` for CLI and later GUI-facing entry adapters
 - `app/` for use-case orchestration, controllers, and workflow coordination
@@ -25,11 +32,23 @@ The preferred package direction for `src/` is:
 
 ## Mapping from current code
 
-- `main.py` should eventually move toward `bootstrap/` plus `api/cli.py`
+- `main.py` is now only a thin compatibility entry point
+- `bootstrap/main.py` is the startup boundary
+- `api/cli.py` owns command-line parsing and user-facing console flow
 - `core/` now acts as the canonical pure-logic layer
-- `app/use_cases/batch_processing.py` holds orchestration that used to live in `core/batch_processor.py`
-- filesystem helpers moved toward `infra/filesystem/`
+- `app/use_cases/batch_processing.py` holds orchestration and application flow
+- `infra/filesystem/` owns file scanning and output path generation
 - `infra/imaging/image_processor.py` is the future adapter boundary for Pillow-backed processing
+
+## Project-level interpretation
+
+For this repository, there is currently only one real application package: `photo_processor`.
+
+If more packages appear later, they should be added only when they represent genuinely separate deliverables or reusable libraries. Until then, the correct interpretation is:
+
+- `src/` contains project source code
+- `photo_processor/` contains the whole application
+- `api/app/core/infra/bootstrap/config` are the layers of that application
 
 ## Architectural rule
 
