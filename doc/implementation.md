@@ -23,6 +23,7 @@ The current repository implements the first technical slice of the product:
 - combined `Setup` tab for source/output configuration, simplified menu, and stronger action-button styling
 - input-format filtering and output-extension selection in the GUI settings model
 - real GUI actions for folder browsing, dry-run preview, full batch start, output-folder opening, and report rendering
+- searchable GUI Help dialog with parameter descriptions and external reference links
 - translation layer in `src/photo_processor/app/i18n/` and `src/photo_processor/config/translations.py` with `en`, `ru`, and `he`
 - quality warnings for source images smaller than the target frame
 - unit and integration tests for math, paths, planning, and one-image processing in `tests/`
