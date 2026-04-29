@@ -21,6 +21,7 @@ The current repository implements the first technical slice of the product:
 - JSON settings persistence in `src/photo_processor/infra/settings_storage/`, with runtime storage resolved to `%ProgramData%\PhotoPrintPreparation\settings.json` on Windows
 - desktop GUI scaffold in `src/photo_processor/gui/` and `src/photo_processor/api/gui_app.py`
 - combined `Setup` tab for source/output configuration, simplified menu, and stronger action-button styling
+- `Manual` tab for one-file preview, per-file fit-mode switching, and save-current output
 - input-format filtering and output-extension selection in the GUI settings model
 - real GUI actions for folder browsing, full batch start, output-folder opening, and report rendering
 - searchable GUI Help dialog with parameter descriptions and external reference links
@@ -41,7 +42,7 @@ The product specification in `source doc/PhotoProject_expanded.docx` expects:
 
 - a complete one-image processing pipeline
 - JPEG output under a size limit
-- multiple frame fit modes
+- multiple frame fit modes for contain, fit by width, and fit by height
 - orientation-aware target frame selection
 - later a GUI and portable Windows build
 

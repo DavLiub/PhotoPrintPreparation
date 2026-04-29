@@ -23,7 +23,6 @@ class ResizeMode(str, Enum):
     CONTAIN = "contain"
     FIT_WIDTH = "fit_width"
     FIT_HEIGHT = "fit_height"
-    COVER = "cover"
 
 
 SUPPORTED_INPUT_FORMATS = (".jpg", ".jpeg", ".png", ".bmp", ".webp")

@@ -4,7 +4,6 @@ from photo_processor.core.orientation import choose_target_frame
 from photo_processor.core.resize_rules import (
     ResizePlan,
     calculate_contain_size,
-    calculate_cover_size,
     calculate_fit_height_size,
     calculate_fit_width_size,
 )
@@ -30,10 +29,7 @@ def build_resize_plan(
         plan = calculate_contain_size(source_width, source_height, target_width, target_height)
     elif settings.resize_mode == ResizeMode.FIT_WIDTH:
         plan = calculate_fit_width_size(source_width, source_height, target_width, target_height)
-    elif settings.resize_mode == ResizeMode.FIT_HEIGHT:
-        plan = calculate_fit_height_size(source_width, source_height, target_width, target_height)
     else:
-        plan = calculate_cover_size(source_width, source_height, target_width, target_height)
+        plan = calculate_fit_height_size(source_width, source_height, target_width, target_height)
 
     return target_width, target_height, plan
-

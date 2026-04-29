@@ -15,6 +15,15 @@ from photo_processor.core.settings import ProcessingSettings, ResizeMode, SUPPOR
 from photo_processor.core.settings_snapshot import SettingsSnapshot
 
 
+def _parse_resize_mode(value: str | None) -> ResizeMode:
+    if value is None:
+        return ResizeMode.CONTAIN
+    try:
+        return ResizeMode(value)
+    except ValueError:
+        return ResizeMode.CONTAIN
+
+
 def build_settings_from_args(
     args: Namespace,
     saved_snapshot: SettingsSnapshot | None = None,
@@ -38,12 +47,12 @@ def build_settings_from_args(
         preset.dpi if preset else (snapshot.dpi if snapshot.dpi is not None else DEFAULT_DPI)
     )
     resize_mode = (
-        ResizeMode(args.resize_mode)
+        _parse_resize_mode(args.resize_mode)
         if args.resize_mode is not None
         else (
             preset.resize_mode
             if preset
-            else (ResizeMode(snapshot.resize_mode) if snapshot.resize_mode is not None else ResizeMode.CONTAIN)
+            else _parse_resize_mode(snapshot.resize_mode)
         )
     )
     max_file_size_mb = (

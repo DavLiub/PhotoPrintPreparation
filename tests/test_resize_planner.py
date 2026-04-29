@@ -23,18 +23,17 @@ class ResizePlannerTestCase(unittest.TestCase):
         self.assertEqual((target_width, target_height), (1000, 1500))
         self.assertEqual((plan.resized_width, plan.resized_height), (1000, 1500))
 
-    def test_planner_uses_cover_math(self) -> None:
+    def test_planner_uses_fit_height_math(self) -> None:
         settings = ProcessingSettings(
             source_folder=Path("input"),
             output_folder=Path("output"),
             width=1500,
             height=1000,
-            resize_mode=ResizeMode.COVER,
+            resize_mode=ResizeMode.FIT_HEIGHT,
         )
 
         target_width, target_height, plan = build_resize_plan(settings, 3000, 2200)
 
         self.assertEqual((target_width, target_height), (1500, 1000))
-        self.assertEqual((plan.resized_width, plan.resized_height), (1500, 1100))
-        self.assertIsNotNone(plan.crop_box)
-
+        self.assertEqual((plan.resized_width, plan.resized_height), (1364, 1000))
+        self.assertIsNone(plan.crop_box)

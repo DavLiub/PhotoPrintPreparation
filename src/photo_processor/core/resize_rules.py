@@ -37,13 +37,6 @@ def calculate_fit_height_size(source_width: int, source_height: int, frame_width
     return ResizePlan(resized_width, resized_height, crop_box=crop_box, padding=padding)
 
 
-def calculate_cover_size(source_width: int, source_height: int, frame_width: int, frame_height: int) -> ResizePlan:
-    factor = max(frame_width / source_width, frame_height / source_height)
-    resized_width, resized_height = _scale(source_width, source_height, factor)
-    crop_box = calculate_crop_box(resized_width, resized_height, frame_width, frame_height)
-    return ResizePlan(resized_width, resized_height, crop_box=crop_box)
-
-
 def calculate_crop_box(resized_width: int, resized_height: int, frame_width: int, frame_height: int) -> tuple[int, int, int, int]:
     left = max(0, (resized_width - frame_width) // 2)
     top = max(0, (resized_height - frame_height) // 2)

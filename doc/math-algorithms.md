@@ -24,7 +24,6 @@ The core rule is a scale factor applied to the source image:
 - `contain`: `min(frame_width / source_width, frame_height / source_height)`
 - `fit_width`: `frame_width / source_width`
 - `fit_height`: `frame_height / source_height`
-- `cover`: `max(frame_width / source_width, frame_height / source_height)`
 
 The resulting dimensions are rounded and clamped to at least `1` pixel.
 
@@ -54,7 +53,7 @@ right = left + frame_width
 bottom = top + frame_height
 ```
 
-This is used by `fit_width` and `cover`, and optionally by `fit_height` when width overflows.
+This is used by `fit_width`, and optionally by `fit_height` when width overflows.
 
 ## Orientation choice
 

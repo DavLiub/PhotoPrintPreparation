@@ -83,33 +83,6 @@ class ImageProcessorTestCase(unittest.TestCase):
         with Image.open(output_path) as result:
             self.assertEqual(result.size, (1000, 1500))
 
-    def test_process_cover_mode_fills_target_frame(self) -> None:
-        source_dir = Path(self._testMethodName)
-        output_dir = source_dir / "out"
-        source_dir.mkdir(exist_ok=True)
-        output_dir.mkdir(exist_ok=True)
-        self.addCleanup(_cleanup_tree, source_dir)
-
-        source_path = source_dir / "cover.png"
-        output_path = output_dir / "cover_processed.jpg"
-        Image.new("RGB", (3000, 2200), (10, 20, 30)).save(source_path, format="PNG")
-
-        settings = ProcessingSettings(
-            source_folder=source_dir,
-            output_folder=output_dir,
-            width=1500,
-            height=1000,
-            resize_mode=ResizeMode.COVER,
-            max_file_size_mb=1.0,
-        )
-
-        result_info = ImageProcessor(settings).process(ImageTask(source_path=source_path, output_path=output_path))
-
-        self.assertEqual(result_info.target_size, (1500, 1000))
-        self.assertEqual(result_info.output_info.size, (1500, 1000))
-        with Image.open(output_path) as result:
-            self.assertEqual(result.size, (1500, 1000))
-
     def test_process_fit_height_mode_adds_expected_frame_size(self) -> None:
         source_dir = Path(self._testMethodName)
         output_dir = source_dir / "out"

@@ -1,15 +1,18 @@
 from __future__ import annotations
 
 from pathlib import Path
+from dataclasses import replace
 
 from photo_processor.app.controllers.processing_controller import ProcessingController
 from photo_processor.app.controllers.settings_controller import SettingsController
 from photo_processor.app.i18n.translator import Translator
 from photo_processor.config.presets import PRESETS
 from photo_processor.core.output_policy import ConflictStrategy
+from photo_processor.core.image_task import ImageTask
 from photo_processor.core.settings import ProcessingSettings, ResizeMode, Units
 from photo_processor.gui.dialogs.about_dialog import AboutDialog
 from photo_processor.gui.dialogs.help_dialog import HelpDialog
+from photo_processor.gui.image_preview import pil_image_to_qpixmap
 from photo_processor.gui.icon_provider import (
     about_icon_path,
     app_icon_path,
@@ -20,10 +23,14 @@ from photo_processor.gui.icon_provider import (
     help_icon_path,
 )
 from photo_processor.gui.processing_worker import ProcessingWorker
+from photo_processor.gui.tabs.manual_tab import ManualTab
 from photo_processor.gui.tabs.processing_tab import ProcessingTab
 from photo_processor.gui.tabs.report_tab import ReportTab
 from photo_processor.gui.tabs.setup_tab import SetupTab
 from photo_processor.infra.filesystem.file_scanner import scan_supported_images
+from photo_processor.infra.filesystem.output_path_builder import build_output_path
+from photo_processor.infra.imaging.image_processor import ImageProcessor
+from photo_processor.infra.imaging.manual_preview import build_manual_preview
 
 try:
     from PySide6.QtCore import QThread, QTimer, QUrl
@@ -59,6 +66,7 @@ try:
             self.processing_worker: ProcessingWorker | None = None
             self.processing_dry_run = False
             self.current_run_settings: ProcessingSettings | None = None
+            self.manual_files: list[Path] = []
             self.source_count_enabled = False
             self.source_count_timer = QTimer(self)
             self.source_count_timer.setSingleShot(True)
@@ -112,9 +120,11 @@ try:
             self.tabs = QTabWidget(root)
             self.setup_tab = SetupTab(self._apply_selected_preset, root)
             self.processing_tab = ProcessingTab(root)
+            self.manual_tab = ManualTab(root)
             self.report_tab = ReportTab(root)
             self.tabs.addTab(self.setup_tab, "")
             self.tabs.addTab(self.processing_tab, "")
+            self.tabs.addTab(self.manual_tab, "")
             self.tabs.addTab(self.report_tab, "")
 
             self.start_button = QPushButton(root)
@@ -131,6 +141,16 @@ try:
             for checkbox in self.setup_tab.format_checkboxes.values():
                 checkbox.toggled.connect(self._enable_source_count_refresh)
                 checkbox.toggled.connect(self._schedule_source_file_count_refresh)
+            self.processing_tab.width_spin.valueChanged.connect(self._refresh_manual_preview)
+            self.processing_tab.height_spin.valueChanged.connect(self._refresh_manual_preview)
+            self.processing_tab.units_combo.currentIndexChanged.connect(self._sync_manual_resize_mode_from_processing)
+            self.processing_tab.dpi_spin.valueChanged.connect(self._refresh_manual_preview)
+            self.processing_tab.resize_mode_combo.currentIndexChanged.connect(self._sync_manual_resize_mode_from_processing)
+            self.manual_tab.file_list.currentRowChanged.connect(self._refresh_manual_preview)
+            self.manual_tab.manual_resize_mode_combo.currentIndexChanged.connect(self._refresh_manual_preview)
+            self.manual_tab.previous_button.clicked.connect(self._select_previous_manual_file)
+            self.manual_tab.next_button.clicked.connect(self._select_next_manual_file)
+            self.manual_tab.save_current_button.clicked.connect(self._save_current_manual_file)
             self.start_button.clicked.connect(self._start_processing)
             self.open_output_button.clicked.connect(self._open_output_folder)
             self.save_settings_button.clicked.connect(self._save_settings)
@@ -212,6 +232,7 @@ try:
             self.setup_tab.set_output_format(snapshot.output_format)
             self._set_combo_data(self.processing_tab.units_combo, snapshot.units or Units.PIXELS.value)
             self._set_combo_data(self.processing_tab.resize_mode_combo, snapshot.resize_mode or ResizeMode.CONTAIN.value)
+            self._set_combo_data(self.manual_tab.manual_resize_mode_combo, snapshot.resize_mode or ResizeMode.CONTAIN.value)
             self._set_combo_data(self.setup_tab.conflict_combo, snapshot.conflict_strategy or ConflictStrategy.ADD_COUNTER.value)
             if snapshot.preset_id:
                 self._set_combo_data(self.setup_tab.preset_combo, snapshot.preset_id)
@@ -227,6 +248,7 @@ try:
             self.setup_tab.set_output_format(None)
             self._set_combo_data(self.processing_tab.units_combo, Units.PIXELS.value)
             self._set_combo_data(self.processing_tab.resize_mode_combo, ResizeMode.CONTAIN.value)
+            self._set_combo_data(self.manual_tab.manual_resize_mode_combo, ResizeMode.CONTAIN.value)
             self._set_combo_data(self.setup_tab.conflict_combo, ConflictStrategy.ADD_COUNTER.value)
             self._reset_session_views(enable_source_count=False)
 
@@ -247,6 +269,7 @@ try:
             self.processing_tab.max_file_size_spin.setValue(preset.max_file_size_mb)
             self._set_combo_data(self.processing_tab.units_combo, preset.units.value)
             self._set_combo_data(self.processing_tab.resize_mode_combo, preset.resize_mode.value)
+            self._set_combo_data(self.manual_tab.manual_resize_mode_combo, preset.resize_mode.value)
 
         def _save_settings(self) -> None:
             settings = self._build_settings()
@@ -421,6 +444,7 @@ try:
             self.save_settings_button.setEnabled(not is_running)
             self.setup_tab.source_browse_button.setEnabled(not is_running)
             self.setup_tab.output_browse_button.setEnabled(not is_running)
+            self.manual_tab.save_current_button.setEnabled(not is_running)
             self.tabs.setEnabled(not is_running)
             if is_running:
                 self.statusBar().showMessage(self.translator.text("status.processing_started"))
@@ -447,15 +471,103 @@ try:
             source_text = self.setup_tab.source_path_edit.text().strip()
             if not source_text:
                 self._update_progress(0, 0)
+                self.manual_files = []
+                self.manual_tab.set_file_list([])
                 return
             source_folder = Path(source_text).expanduser()
-            total = len(scan_supported_images(source_folder, self.setup_tab.selected_source_formats()))
+            self.manual_files = scan_supported_images(source_folder, self.setup_tab.selected_source_formats())
+            self.manual_tab.set_file_list(self.manual_files)
+            total = len(self.manual_files)
             self._update_progress(0, total)
+            self._refresh_manual_preview()
+
+        def _sync_manual_resize_mode_from_processing(self) -> None:
+            self._set_combo_data(
+                self.manual_tab.manual_resize_mode_combo,
+                self.processing_tab.resize_mode_combo.currentData(),
+            )
+            self._refresh_manual_preview()
+
+        def _manual_preview_settings(self) -> ProcessingSettings:
+            settings = self._build_settings()
+            return replace(
+                settings,
+                resize_mode=ResizeMode(self.manual_tab.manual_resize_mode_combo.currentData()),
+            )
+
+        def _selected_manual_path(self) -> Path | None:
+            row = self.manual_tab.file_list.currentRow()
+            if row < 0 or row >= len(self.manual_files):
+                return None
+            return self.manual_files[row]
+
+        def _refresh_manual_preview(self) -> None:
+            source_path = self._selected_manual_path()
+            if source_path is None:
+                self.manual_tab.clear_preview()
+                return
+            try:
+                image, source_info, target_size, target_info = build_manual_preview(
+                    source_path,
+                    self._manual_preview_settings(),
+                )
+            except Exception:
+                self.manual_tab.clear_preview()
+                return
+            pixmap = pil_image_to_qpixmap(image)
+            self.manual_tab.set_preview_pixmap(pixmap)
+            self.manual_tab.source_info_value.setText(
+                f"{source_info.width}x{source_info.height} | {source_info.mode} | {source_info.image_format or '-'}"
+            )
+            self.manual_tab.target_info_value.setText(
+                f"{target_size[0]}x{target_size[1]} | {target_info.mode}"
+            )
+
+        def _select_previous_manual_file(self) -> None:
+            row = self.manual_tab.file_list.currentRow()
+            if row > 0:
+                self.manual_tab.file_list.setCurrentRow(row - 1)
+
+        def _select_next_manual_file(self) -> None:
+            row = self.manual_tab.file_list.currentRow()
+            if 0 <= row < self.manual_tab.file_list.count() - 1:
+                self.manual_tab.file_list.setCurrentRow(row + 1)
+
+        def _save_current_manual_file(self) -> None:
+            source_path = self._selected_manual_path()
+            if source_path is None:
+                return
+            settings = self._manual_preview_settings()
+            output_path = build_output_path(source_path, settings.output_folder, settings.output_policy)
+            if output_path is None:
+                QMessageBox.information(
+                    self,
+                    self.translator.text("manual.save_skipped_title"),
+                    self.translator.text("manual.save_skipped_message"),
+                )
+                return
+            try:
+                output_path.parent.mkdir(parents=True, exist_ok=True)
+                result = ImageProcessor(settings).process(
+                    ImageTask(source_path=source_path, output_path=output_path)
+                )
+            except Exception as exc:
+                QMessageBox.critical(
+                    self,
+                    self.translator.text("dialog.processing_failed.title"),
+                    str(exc),
+                )
+                return
+            self.statusBar().showMessage(f"Saved {result.output_path.name}")
+            self._refresh_source_file_count()
 
         def _reset_session_views(self, enable_source_count: bool) -> None:
             self.source_count_timer.stop()
             self.source_count_enabled = enable_source_count
             self.report_tab.clear_report()
+            self.manual_files = []
+            self.manual_tab.set_file_list([])
+            self.manual_tab.clear_preview()
             if enable_source_count:
                 self._refresh_source_file_count()
             else:
@@ -506,9 +618,11 @@ try:
             self.lang_he_action.setText(t("lang.hebrew"))
             self.tabs.setTabText(0, t("tab.setup"))
             self.tabs.setTabText(1, t("tab.processing"))
-            self.tabs.setTabText(2, t("tab.report"))
+            self.tabs.setTabText(2, t("tab.manual"))
+            self.tabs.setTabText(3, t("tab.report"))
             self.setup_tab.retranslate(t)
             self.processing_tab.retranslate(t)
+            self.manual_tab.retranslate(t)
             self.report_tab.retranslate(t)
             self.start_button.setText(t("actions.start"))
             self.open_output_button.setText(t("actions.open_output"))

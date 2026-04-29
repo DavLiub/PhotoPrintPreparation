@@ -70,7 +70,7 @@ class SettingsFactoryTestCase(unittest.TestCase):
                 height=13,
                 units=Units.CENTIMETERS.value,
                 dpi=200,
-                resize_mode=ResizeMode.COVER.value,
+                resize_mode=ResizeMode.FIT_HEIGHT.value,
                 max_file_size_mb=3.0,
                 suffix="_done",
                 conflict_strategy=ConflictStrategy.SKIP.value,
@@ -81,7 +81,7 @@ class SettingsFactoryTestCase(unittest.TestCase):
         self.assertEqual(settings.height, 13)
         self.assertEqual(settings.units, Units.CENTIMETERS)
         self.assertEqual(settings.dpi, 200)
-        self.assertEqual(settings.resize_mode, ResizeMode.COVER)
+        self.assertEqual(settings.resize_mode, ResizeMode.FIT_HEIGHT)
         self.assertEqual(settings.max_file_size_mb, 3.0)
         self.assertEqual(settings.output_policy.filename_suffix, "_done")
         self.assertEqual(settings.output_policy.conflict_strategy, ConflictStrategy.SKIP)
@@ -106,7 +106,7 @@ class SettingsFactoryTestCase(unittest.TestCase):
                 height=1200,
                 units=Units.PIXELS.value,
                 dpi=200,
-                resize_mode=ResizeMode.COVER.value,
+                resize_mode="cover",
                 max_file_size_mb=1.2,
                 filename_suffix="_saved",
                 conflict_strategy=ConflictStrategy.SKIP.value,
@@ -118,7 +118,7 @@ class SettingsFactoryTestCase(unittest.TestCase):
         self.assertEqual(settings.width, 1600)
         self.assertEqual(settings.height, 1200)
         self.assertEqual(settings.dpi, 200)
-        self.assertEqual(settings.resize_mode, ResizeMode.COVER)
+        self.assertEqual(settings.resize_mode, ResizeMode.CONTAIN)
         self.assertEqual(settings.output_policy.filename_suffix, "_saved")
         self.assertEqual(settings.output_policy.conflict_strategy, ConflictStrategy.SKIP)
         self.assertEqual(settings.source_formats, (".jpg", ".png"))
