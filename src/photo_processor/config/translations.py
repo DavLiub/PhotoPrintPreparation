@@ -95,6 +95,8 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "dialog.validation.source_missing": "Choose an existing source folder before starting processing.",
         "dialog.processing_failed.title": "Processing failed",
         "dialog.processing_failed.message": "Processing stopped because of an unexpected error.",
+        "dialog.close_while_processing.title": "Processing is still running",
+        "dialog.close_while_processing.message": "Wait until processing finishes before closing the application.",
         "help.text": "Use Setup to choose folders and a preset, Processing to tune output, and Report to review results.",
         "about.text": "Photo Print Preparation GUI scaffold",
         "preset.none": "Custom",

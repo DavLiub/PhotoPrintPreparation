@@ -26,8 +26,8 @@ from photo_processor.gui.tabs.setup_tab import SetupTab
 from photo_processor.infra.filesystem.file_scanner import scan_supported_images
 
 try:
-    from PySide6.QtCore import QThread, QUrl
-    from PySide6.QtGui import QAction, QDesktopServices
+    from PySide6.QtCore import QThread, QTimer, QUrl
+    from PySide6.QtGui import QAction, QCloseEvent, QDesktopServices
     from PySide6.QtWidgets import (
         QFileDialog,
         QHBoxLayout,
@@ -58,6 +58,11 @@ try:
             self.processing_thread: QThread | None = None
             self.processing_worker: ProcessingWorker | None = None
             self.processing_dry_run = False
+            self.current_run_settings: ProcessingSettings | None = None
+            self.source_count_timer = QTimer(self)
+            self.source_count_timer.setSingleShot(True)
+            self.source_count_timer.setInterval(250)
+            self.source_count_timer.timeout.connect(self._refresh_source_file_count)
             self.help_dialog: HelpDialog | None = None
             self.about_dialog: AboutDialog | None = None
             self._setup_ui()
@@ -121,9 +126,9 @@ try:
             self.progress_count_label = QLabel(root)
             self.setup_tab.source_browse_button.clicked.connect(self._choose_source_folder)
             self.setup_tab.output_browse_button.clicked.connect(self._choose_output_folder)
-            self.setup_tab.source_path_edit.textChanged.connect(self._refresh_source_file_count)
+            self.setup_tab.source_path_edit.textChanged.connect(self._schedule_source_file_count_refresh)
             for checkbox in self.setup_tab.format_checkboxes.values():
-                checkbox.toggled.connect(self._refresh_source_file_count)
+                checkbox.toggled.connect(self._schedule_source_file_count_refresh)
             self.preview_button.clicked.connect(self._preview_processing)
             self.start_button.clicked.connect(self._start_processing)
             self.open_output_button.clicked.connect(self._open_output_folder)
@@ -213,7 +218,7 @@ try:
             self._set_combo_data(self.setup_tab.conflict_combo, snapshot.conflict_strategy or ConflictStrategy.ADD_COUNTER.value)
             if snapshot.preset_id:
                 self._set_combo_data(self.setup_tab.preset_combo, snapshot.preset_id)
-            self._refresh_source_file_count()
+            self._schedule_source_file_count_refresh()
 
         def _apply_defaults(self) -> None:
             self.processing_tab.width_spin.setValue(1500)
@@ -226,7 +231,7 @@ try:
             self._set_combo_data(self.processing_tab.units_combo, Units.PIXELS.value)
             self._set_combo_data(self.processing_tab.resize_mode_combo, ResizeMode.CONTAIN.value)
             self._set_combo_data(self.setup_tab.conflict_combo, ConflictStrategy.ADD_COUNTER.value)
-            self._refresh_source_file_count()
+            self._schedule_source_file_count_refresh()
 
         def _set_combo_data(self, combo, value: str | None) -> None:
             for index in range(combo.count()):
@@ -291,14 +296,16 @@ try:
 
             self.settings_controller.save_settings(settings, self.setup_tab.preset_combo.currentData())
             self.processing_dry_run = dry_run
+            self.current_run_settings = settings
             self._set_processing_state(True)
-            self._update_progress(0, 0)
+            known_total = len(scan_supported_images(settings.source_folder, settings.source_formats))
+            self._update_progress(0, known_total)
             self.processing_thread = QThread(self)
             self.processing_worker = ProcessingWorker(self.processing_controller, settings, dry_run)
             self.processing_worker.moveToThread(self.processing_thread)
             self.processing_thread.started.connect(self.processing_worker.run)
             self.processing_worker.progress.connect(self._update_progress)
-            self.processing_worker.finished.connect(lambda execution: self._handle_processing_finished(settings, execution))
+            self.processing_worker.finished.connect(self._handle_processing_finished)
             self.processing_worker.failed.connect(self._handle_processing_failed)
             self.processing_worker.finished.connect(self.processing_thread.quit)
             self.processing_worker.failed.connect(self.processing_thread.quit)
@@ -372,7 +379,11 @@ try:
                     )
             return "\n".join(lines)
 
-        def _handle_processing_finished(self, settings, execution) -> None:
+        def _handle_processing_finished(self, execution) -> None:
+            settings = self.current_run_settings
+            if settings is None:
+                self._handle_processing_failed(self.translator.text("dialog.processing_failed.message"))
+                return
             self.report_tab.set_report_text(self._format_report_text(settings, execution.report, execution.result))
             self.tabs.setCurrentWidget(self.report_tab)
             self._set_processing_state(False)
@@ -382,6 +393,18 @@ try:
 
         def _handle_processing_failed(self, message: str) -> None:
             self._set_processing_state(False)
+            self.report_tab.set_report_text(
+                "\n".join(
+                    [
+                        self.translator.text("report.summary"),
+                        f"Errors: 1",
+                        "",
+                        self.translator.text("report.warnings"),
+                        message or self.translator.text("dialog.processing_failed.message"),
+                    ]
+                )
+            )
+            self.tabs.setCurrentWidget(self.report_tab)
             QMessageBox.critical(
                 self,
                 self.translator.text("dialog.processing_failed.title"),
@@ -395,6 +418,7 @@ try:
                 self.processing_thread.deleteLater()
             self.processing_worker = None
             self.processing_thread = None
+            self.current_run_settings = None
 
         def _set_processing_state(self, is_running: bool) -> None:
             self.preview_button.setEnabled(not is_running)
@@ -407,13 +431,18 @@ try:
             if is_running:
                 self.statusBar().showMessage(self.translator.text("status.processing_started"))
             else:
-                self._refresh_source_file_count()
+                self._schedule_source_file_count_refresh()
 
         def _update_progress(self, current: int, total: int) -> None:
             safe_total = max(total, 0)
             self.progress_bar.setMaximum(max(safe_total, 1))
             self.progress_bar.setValue(min(current, max(safe_total, 1)))
             self.progress_count_label.setText(f"({current}/{safe_total})")
+
+        def _schedule_source_file_count_refresh(self) -> None:
+            if self.processing_thread is not None:
+                return
+            self.source_count_timer.start()
 
         def _refresh_source_file_count(self) -> None:
             if self.processing_thread is not None:
@@ -425,6 +454,18 @@ try:
             source_folder = Path(source_text).expanduser()
             total = len(scan_supported_images(source_folder, self.setup_tab.selected_source_formats()))
             self._update_progress(0, total)
+
+        def closeEvent(self, event: QCloseEvent) -> None:
+            if self.processing_thread is not None:
+                QMessageBox.warning(
+                    self,
+                    self.translator.text("dialog.close_while_processing.title"),
+                    self.translator.text("dialog.close_while_processing.message"),
+                )
+                event.ignore()
+                return
+            self.source_count_timer.stop()
+            super().closeEvent(event)
 
         def _open_output_folder(self) -> None:
             output_folder = Path(self.setup_tab.output_path_edit.text() or self._build_settings().output_folder).resolve()
