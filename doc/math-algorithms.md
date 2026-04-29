@@ -15,7 +15,7 @@ Example:
 10 cm at 300 DPI = 10 / 2.54 * 300 = 1181.10 -> 1181 px
 ```
 
-This behavior is implemented in `models/settings.py` and `utils/units.py`.
+This behavior is implemented in `core/settings.py` and `core/units.py`.
 
 ## Resize modes
 
@@ -66,9 +66,9 @@ score = abs((image_width / image_height) - (frame_width / frame_height))
 
 If the rotated image has a lower score than the original orientation, the target frame is swapped. This is implemented in `core/orientation.py`.
 
-## Planned algorithm stages
+## Runtime pipeline
 
-The full image-processing pipeline still needs these runtime stages:
+The current one-image pipeline runs these stages:
 
 1. read source image
 2. apply EXIF orientation
@@ -78,4 +78,4 @@ The full image-processing pipeline still needs these runtime stages:
 6. crop or pad
 7. save JPEG to memory
 8. reduce quality or dimensions until the file-size limit is satisfied
-
+9. write the final output file

@@ -12,9 +12,10 @@ Version `0.1` focuses on the non-UI foundation:
 - unit conversion
 - resize and orientation calculations
 - output path generation
+- one-image Pillow processing pipeline
 - batch report structure
 
-Pixel-level image processing and GUI are the next stages.
+GUI, preview, richer reporting, and settings persistence are the next stages.
 
 ## Quick start
 
@@ -24,7 +25,7 @@ python -m venv .venv
 pip install -r requirements.txt
 $env:PYTHONPATH = "src"
 python -m unittest discover -s tests -v
-python -m photo_processor --source "C:\Photos" --dry-run
+python -m photo_processor --source "C:\Photos" --output "C:\Photos\processed"
 ```
 
 ## Layout
@@ -33,5 +34,5 @@ python -m photo_processor --source "C:\Photos" --dry-run
 - `src/photo_processor/` root application package
 - `src/photo_processor/api`, `app`, `core`, `infra`, `bootstrap`, `config` application layers
 - `tests/` unit tests for core rules
-- `build.bat` placeholder for packaging flow
+- `build.bat` local install and test helper
 - `run.bat` local CLI launcher

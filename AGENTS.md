@@ -39,6 +39,14 @@ When exports are introduced later, document the exact generation command here.
 
 Use clear, stable names for files and folders. Prefer descriptive names with spaces only when existing repository conventions already use them, as in `source doc/`. For new files, prefer one convention and keep it consistent, for example `print-layout-v2.pdf` or `cover_sheet_notes.md`.
 
+For source code structure:
+
+- each file should be purpose-focused and named after its actual responsibility
+- do not mix unrelated functionality in one file
+- prefer splitting files before they grow beyond roughly 250 lines
+- if a file exceeds that size, treat it as a candidate for decomposition
+- prefer deeper, well-grouped package structure over dumping many files into one package
+
 For Markdown files:
 
 - Use `#` headings with short sections

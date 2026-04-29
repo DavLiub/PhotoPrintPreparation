@@ -53,3 +53,14 @@ If more packages appear later, they should be added only when they represent gen
 ## Architectural rule
 
 Core math must not depend on Pillow, GUI frameworks, or filesystem side effects. Infrastructure can depend on core rules, but not the reverse.
+
+## File design principles
+
+Use file boundaries intentionally:
+
+- each file should have a clear target responsibility
+- the file name should describe that responsibility directly
+- unrelated behavior should not be mixed into the same file
+- aim to keep files under roughly `250` lines
+- when a file grows beyond that size, treat it as a signal to split responsibilities
+- prefer nested package structure with meaningful grouping over placing many unrelated files in a single package

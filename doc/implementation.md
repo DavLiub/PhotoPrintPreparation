@@ -9,19 +9,18 @@ The current repository implements the first technical slice of the product:
 - centimeter-to-pixel conversion in `src/photo_processor/core/units.py`
 - resize plan math in `src/photo_processor/core/resize_rules.py`
 - orientation choice logic in `src/photo_processor/core/orientation.py`
-- source scanning and output naming in `src/photo_processor/services/`
-- batch orchestration and result aggregation in `src/photo_processor/core/batch_processor.py`
-- unit tests for the math and path rules in `tests/`
+- source scanning and output naming in `src/photo_processor/infra/filesystem/`
+- one-image processing in `src/photo_processor/infra/imaging/`
+- batch orchestration and result aggregation in `src/photo_processor/app/use_cases/batch_processing.py`
+- unit and integration tests for math, paths, planning, and one-image processing in `tests/`
 
-## Not implemented yet
+## Planned next
 
-The code intentionally stops before real image transformation:
+The code still has planned gaps:
 
-- `core/image_processor.py` is a placeholder
-- EXIF orientation is not applied yet
-- Pillow is not used yet
-- JPEG file-size optimization is not implemented yet
 - GUI, preview, settings persistence, and packaging are not implemented yet
+- per-file structured result reporting is not implemented yet
+- advanced output policies and presets are not implemented yet
 
 ## Convergence with product specification
 
@@ -46,4 +45,4 @@ The repository is aligned with the recommended implementation order from the spe
 
 ## Documentation maintenance rule
 
-Whenever a planned module becomes real code, update this file to move it from `Not implemented yet` to `Implemented now`.
+Whenever a planned module becomes real code, move it from `Planned next` to `Implemented now`.
