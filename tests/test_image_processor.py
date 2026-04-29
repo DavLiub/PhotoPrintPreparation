@@ -75,6 +75,135 @@ class ImageProcessorTestCase(unittest.TestCase):
         with Image.open(output_path) as result:
             self.assertEqual(result.size, (1000, 1500))
 
+    def test_process_cover_mode_fills_target_frame(self) -> None:
+        source_dir = Path(self._testMethodName)
+        output_dir = source_dir / "out"
+        source_dir.mkdir(exist_ok=True)
+        output_dir.mkdir(exist_ok=True)
+        self.addCleanup(_cleanup_tree, source_dir)
+
+        source_path = source_dir / "cover.png"
+        output_path = output_dir / "cover_processed.jpg"
+        Image.new("RGB", (3000, 2200), (10, 20, 30)).save(source_path, format="PNG")
+
+        settings = ProcessingSettings(
+            source_folder=source_dir,
+            output_folder=output_dir,
+            width=1500,
+            height=1000,
+            resize_mode=ResizeMode.COVER,
+            max_file_size_mb=1.0,
+        )
+
+        result_info = ImageProcessor(settings).process(ImageTask(source_path=source_path, output_path=output_path))
+
+        self.assertEqual(result_info.target_size, (1500, 1000))
+        self.assertEqual(result_info.output_size, (1500, 1000))
+        with Image.open(output_path) as result:
+            self.assertEqual(result.size, (1500, 1000))
+
+    def test_process_fit_height_mode_adds_expected_frame_size(self) -> None:
+        source_dir = Path(self._testMethodName)
+        output_dir = source_dir / "out"
+        source_dir.mkdir(exist_ok=True)
+        output_dir.mkdir(exist_ok=True)
+        self.addCleanup(_cleanup_tree, source_dir)
+
+        source_path = source_dir / "fit_height.png"
+        output_path = output_dir / "fit_height_processed.jpg"
+        Image.new("RGB", (3000, 2200), (90, 110, 130)).save(source_path, format="PNG")
+
+        settings = ProcessingSettings(
+            source_folder=source_dir,
+            output_folder=output_dir,
+            width=1500,
+            height=1000,
+            resize_mode=ResizeMode.FIT_HEIGHT,
+            max_file_size_mb=1.0,
+        )
+
+        result_info = ImageProcessor(settings).process(ImageTask(source_path=source_path, output_path=output_path))
+
+        self.assertEqual(result_info.output_size, (1500, 1000))
+        with Image.open(output_path) as result:
+            self.assertEqual(result.size, (1500, 1000))
+
+    def test_process_fit_width_mode_crops_to_expected_frame_size(self) -> None:
+        source_dir = Path(self._testMethodName)
+        output_dir = source_dir / "out"
+        source_dir.mkdir(exist_ok=True)
+        output_dir.mkdir(exist_ok=True)
+        self.addCleanup(_cleanup_tree, source_dir)
+
+        source_path = source_dir / "fit_width.png"
+        output_path = output_dir / "fit_width_processed.jpg"
+        Image.new("RGB", (3000, 2200), (40, 60, 80)).save(source_path, format="PNG")
+
+        settings = ProcessingSettings(
+            source_folder=source_dir,
+            output_folder=output_dir,
+            width=1500,
+            height=1000,
+            resize_mode=ResizeMode.FIT_WIDTH,
+            max_file_size_mb=1.0,
+        )
+
+        result_info = ImageProcessor(settings).process(ImageTask(source_path=source_path, output_path=output_path))
+
+        self.assertEqual(result_info.output_size, (1500, 1000))
+        with Image.open(output_path) as result:
+            self.assertEqual(result.size, (1500, 1000))
+
+    def test_process_converts_alpha_image_to_jpeg(self) -> None:
+        source_dir = Path(self._testMethodName)
+        output_dir = source_dir / "out"
+        source_dir.mkdir(exist_ok=True)
+        output_dir.mkdir(exist_ok=True)
+        self.addCleanup(_cleanup_tree, source_dir)
+
+        source_path = source_dir / "alpha.png"
+        output_path = output_dir / "alpha_processed.jpg"
+        Image.new("RGBA", (800, 600), (255, 0, 0, 128)).save(source_path, format="PNG")
+
+        settings = ProcessingSettings(
+            source_folder=source_dir,
+            output_folder=output_dir,
+            width=1000,
+            height=800,
+            resize_mode=ResizeMode.CONTAIN,
+            max_file_size_mb=1.0,
+        )
+
+        result_info = ImageProcessor(settings).process(ImageTask(source_path=source_path, output_path=output_path))
+
+        self.assertTrue(result_info.success)
+        with Image.open(output_path) as result:
+            self.assertEqual(result.format, "JPEG")
+            self.assertEqual(result.mode, "RGB")
+
+    def test_process_raises_for_broken_image_file(self) -> None:
+        source_dir = Path(self._testMethodName)
+        output_dir = source_dir / "out"
+        source_dir.mkdir(exist_ok=True)
+        output_dir.mkdir(exist_ok=True)
+        self.addCleanup(_cleanup_tree, source_dir)
+
+        source_path = source_dir / "broken.png"
+        output_path = output_dir / "broken_processed.jpg"
+        source_path.write_bytes(b"not-an-image")
+
+        settings = ProcessingSettings(
+            source_folder=source_dir,
+            output_folder=output_dir,
+            width=1000,
+            height=800,
+            resize_mode=ResizeMode.CONTAIN,
+            max_file_size_mb=1.0,
+        )
+
+        with self.assertRaises(Exception):
+            ImageProcessor(settings).process(ImageTask(source_path=source_path, output_path=output_path))
+
 
 def _cleanup_tree(path: Path) -> None:
     for child in sorted(path.rglob("*"), reverse=True):
