@@ -2,23 +2,29 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from photo_processor.app.controllers.processing_controller import ProcessingController
 from photo_processor.app.controllers.settings_controller import SettingsController
 from photo_processor.app.i18n.translator import Translator
 from photo_processor.config.presets import PRESETS
 from photo_processor.core.output_policy import ConflictStrategy
 from photo_processor.core.settings import ProcessingSettings, ResizeMode, Units
+from photo_processor.gui.processing_worker import ProcessingWorker
 from photo_processor.gui.tabs.processing_tab import ProcessingTab
 from photo_processor.gui.tabs.report_tab import ReportTab
 from photo_processor.gui.tabs.setup_tab import SetupTab
 
 try:
-    from PySide6.QtGui import QAction
+    from PySide6.QtCore import QThread, QUrl
+    from PySide6.QtGui import QAction, QDesktopServices
     from PySide6.QtWidgets import (
+        QFileDialog,
         QHBoxLayout,
+        QLabel,
         QMainWindow,
         QMenu,
         QMenuBar,
         QMessageBox,
+        QProgressBar,
         QPushButton,
         QStatusBar,
         QTabWidget,
@@ -27,10 +33,19 @@ try:
     )
 
     class MainWindow(QMainWindow):
-        def __init__(self, translator: Translator, settings_controller: SettingsController) -> None:
+        def __init__(
+            self,
+            translator: Translator,
+            settings_controller: SettingsController,
+            processing_controller: ProcessingController,
+        ) -> None:
             super().__init__()
             self.translator = translator
             self.settings_controller = settings_controller
+            self.processing_controller = processing_controller
+            self.processing_thread: QThread | None = None
+            self.processing_worker: ProcessingWorker | None = None
+            self.processing_dry_run = False
             self._setup_ui()
             self._load_saved_snapshot()
             self._retranslate()
@@ -80,17 +95,32 @@ try:
             self.start_button = QPushButton(root)
             self.open_output_button = QPushButton(root)
             self.save_settings_button = QPushButton(root)
+            self.progress_bar = QProgressBar(root)
+            self.progress_bar.setMinimum(0)
+            self.progress_bar.setValue(0)
+            self.progress_count_label = QLabel(root)
+            self.setup_tab.source_browse_button.clicked.connect(self._choose_source_folder)
+            self.setup_tab.output_browse_button.clicked.connect(self._choose_output_folder)
+            self.preview_button.clicked.connect(self._preview_processing)
+            self.start_button.clicked.connect(self._start_processing)
+            self.open_output_button.clicked.connect(self._open_output_folder)
             self.save_settings_button.clicked.connect(self._save_settings)
             self._style_action_buttons()
             actions_row.addWidget(self.preview_button)
-            actions_row.addWidget(self.start_button)
             actions_row.addWidget(self.open_output_button)
             actions_row.addStretch(1)
             actions_row.addWidget(self.save_settings_button)
 
+            run_row = QHBoxLayout()
+            run_row.addWidget(self.start_button)
+            run_row.addWidget(self.progress_bar, 1)
+            run_row.addWidget(self.progress_count_label)
+
             layout.addWidget(self.tabs)
             layout.addLayout(actions_row)
+            layout.addLayout(run_row)
             self.setCentralWidget(root)
+            self._update_progress(0, 0)
 
         def _style_action_buttons(self) -> None:
             base_style = """
@@ -117,6 +147,7 @@ try:
             self.open_output_button.setStyleSheet(neutral_style)
             self.save_settings_button.setStyleSheet(neutral_style)
             self.start_button.setStyleSheet(primary_style)
+            self.progress_count_label.setStyleSheet("color: #475569; font-size: 12px; font-weight: 600;")
 
         def _build_settings(self) -> ProcessingSettings:
             source_folder = Path(self.setup_tab.source_path_edit.text() or ".").resolve()
@@ -193,11 +224,174 @@ try:
         def _save_settings(self) -> None:
             settings = self._build_settings()
             self.settings_controller.save_settings(settings, self.setup_tab.preset_combo.currentData())
-            self.statusBar().showMessage(self.translator.text("status.ready"))
+            self.statusBar().showMessage(self.translator.text("status.settings_saved"))
 
         def _switch_language(self, language: str) -> None:
             self.translator.set_language(language)
             self._retranslate()
+
+        def _choose_source_folder(self) -> None:
+            folder = QFileDialog.getExistingDirectory(
+                self,
+                self.translator.text("dialog.source.title"),
+                self.setup_tab.source_path_edit.text() or str(Path.cwd()),
+            )
+            if folder:
+                self.setup_tab.source_path_edit.setText(folder)
+
+        def _choose_output_folder(self) -> None:
+            folder = QFileDialog.getExistingDirectory(
+                self,
+                self.translator.text("dialog.output.title"),
+                self.setup_tab.output_path_edit.text() or self.setup_tab.source_path_edit.text() or str(Path.cwd()),
+            )
+            if folder:
+                self.setup_tab.output_path_edit.setText(folder)
+
+        def _preview_processing(self) -> None:
+            self._run_processing(dry_run=True)
+
+        def _start_processing(self) -> None:
+            self._run_processing(dry_run=False)
+
+        def _run_processing(self, dry_run: bool) -> None:
+            settings = self._build_settings()
+            if not settings.source_folder.exists():
+                QMessageBox.warning(
+                    self,
+                    self.translator.text("dialog.validation.title"),
+                    self.translator.text("dialog.validation.source_missing"),
+                )
+                return
+
+            self.settings_controller.save_settings(settings, self.setup_tab.preset_combo.currentData())
+            self.processing_dry_run = dry_run
+            self._set_processing_state(True)
+            self._update_progress(0, 0)
+            self.processing_thread = QThread(self)
+            self.processing_worker = ProcessingWorker(self.processing_controller, settings, dry_run)
+            self.processing_worker.moveToThread(self.processing_thread)
+            self.processing_thread.started.connect(self.processing_worker.run)
+            self.processing_worker.progress.connect(self._update_progress)
+            self.processing_worker.finished.connect(lambda execution: self._handle_processing_finished(settings, execution))
+            self.processing_worker.failed.connect(self._handle_processing_failed)
+            self.processing_worker.finished.connect(self.processing_thread.quit)
+            self.processing_worker.failed.connect(self.processing_thread.quit)
+            self.processing_thread.finished.connect(self._cleanup_processing_thread)
+            self.processing_thread.start()
+
+        def _format_report_text(self, settings, report, result) -> str:
+            t = self.translator.text
+            target_width, target_height = settings.target_size_px()
+            lines = [
+                t("report.summary"),
+                f"Found files: {report.found_files}",
+                f"Processed: {report.processed_files}",
+                f"Skipped: {report.skipped_files}",
+                f"Errors: {report.error_files}",
+                f"Warnings: {report.warning_count}",
+                "",
+                t("report.context"),
+                f"Source: {settings.source_folder}",
+                f"Output: {settings.output_folder}",
+                f"{t('report.target_frame')}: {target_width}x{target_height}",
+                f"{t('report.resize_mode')}: {settings.resize_mode.value}",
+                t("report.orientation_note").format(width=target_height, height=target_width),
+            ]
+
+            if result.items:
+                lines.append("")
+                lines.append(t("report.files"))
+                for item in result.items:
+                    source_name = item.source_path.name
+                    source_size = ""
+                    if item.source_info is not None:
+                        source_size = f"{item.source_info.width}x{item.source_info.height}"
+                    output_size = ""
+                    if item.output_info is not None:
+                        output_size = f"{item.output_info.width}x{item.output_info.height}"
+                    size_suffix = f" | src {source_size}" if source_size else ""
+                    output_suffix = f" | out {output_size}" if output_size else ""
+                    file_size_suffix = ""
+                    if item.output_file_size_bytes is not None:
+                        file_size_suffix = f" | {round(item.output_file_size_bytes / 1024)} KB"
+                    quality_suffix = ""
+                    if item.output_quality is not None:
+                        quality_suffix = f" | q={item.output_quality}"
+                    lines.append(
+                        f"{item.status.value.upper():7} {source_name}{size_suffix}{output_suffix}{file_size_suffix}{quality_suffix}"
+                    )
+
+            small_source_items = [
+                item
+                for item in result.items
+                if any("smaller than the target frame" in warning for warning in item.warnings)
+            ]
+            if small_source_items:
+                lines.append("")
+                lines.append(t("report.warnings"))
+                lines.append(t("report.warning.small_source_summary"))
+                for item in small_source_items:
+                    if item.source_info is None or item.target_size is None:
+                        lines.append(f"- {item.source_path.name}")
+                        continue
+                    lines.append(
+                        "- "
+                        + t("report.warning.small_source_detail").format(
+                            name=item.source_path.name,
+                            source_width=item.source_info.width,
+                            source_height=item.source_info.height,
+                            target_width=item.target_size[0],
+                            target_height=item.target_size[1],
+                        )
+                    )
+            return "\n".join(lines)
+
+        def _handle_processing_finished(self, settings, execution) -> None:
+            self.report_tab.set_report_text(self._format_report_text(settings, execution.report, execution.result))
+            self.tabs.setCurrentWidget(self.report_tab)
+            self._set_processing_state(False)
+            self._update_progress(execution.report.found_files, execution.report.found_files)
+            status_key = "status.preview_ready" if self.processing_dry_run else "status.processing_complete"
+            self.statusBar().showMessage(self.translator.text(status_key))
+
+        def _handle_processing_failed(self, message: str) -> None:
+            self._set_processing_state(False)
+            QMessageBox.critical(
+                self,
+                self.translator.text("dialog.processing_failed.title"),
+                message or self.translator.text("dialog.processing_failed.message"),
+            )
+
+        def _cleanup_processing_thread(self) -> None:
+            if self.processing_worker is not None:
+                self.processing_worker.deleteLater()
+            if self.processing_thread is not None:
+                self.processing_thread.deleteLater()
+            self.processing_worker = None
+            self.processing_thread = None
+
+        def _set_processing_state(self, is_running: bool) -> None:
+            self.preview_button.setEnabled(not is_running)
+            self.start_button.setEnabled(not is_running)
+            self.open_output_button.setEnabled(not is_running)
+            self.save_settings_button.setEnabled(not is_running)
+            self.setup_tab.source_browse_button.setEnabled(not is_running)
+            self.setup_tab.output_browse_button.setEnabled(not is_running)
+            self.tabs.setEnabled(not is_running)
+            if is_running:
+                self.statusBar().showMessage(self.translator.text("status.processing_started"))
+
+        def _update_progress(self, current: int, total: int) -> None:
+            safe_total = max(total, 0)
+            self.progress_bar.setMaximum(max(safe_total, 1))
+            self.progress_bar.setValue(min(current, max(safe_total, 1)))
+            self.progress_count_label.setText(f"({current}/{safe_total})")
+
+        def _open_output_folder(self) -> None:
+            output_folder = Path(self.setup_tab.output_path_edit.text() or self._build_settings().output_folder).resolve()
+            output_folder.mkdir(parents=True, exist_ok=True)
+            QDesktopServices.openUrl(QUrl.fromLocalFile(str(output_folder)))
 
         def _show_help(self) -> None:
             QMessageBox.information(self, self.translator.text("menu.help.help"), self.translator.text("help.text"))

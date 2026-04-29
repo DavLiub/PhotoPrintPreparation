@@ -16,7 +16,11 @@ try:
 
         def retranslate(self, t) -> None:
             self.group.setTitle(t("report.group"))
-            self.report_placeholder.setPlainText(t("report.placeholder"))
+            if not self.report_placeholder.toPlainText():
+                self.report_placeholder.setPlainText(t("report.placeholder"))
+
+        def set_report_text(self, text: str) -> None:
+            self.report_placeholder.setPlainText(text)
 
 except ImportError:  # pragma: no cover - depends on environment
     class ReportTab:  # type: ignore[no-redef]

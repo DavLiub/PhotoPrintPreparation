@@ -18,10 +18,11 @@ The current repository implements the first technical slice of the product:
 - image metadata normalization in `src/photo_processor/core/image_info.py`
 - output behavior modeling in `src/photo_processor/core/output_policy.py`
 - preset registry and preset-aware CLI settings resolution in `src/photo_processor/config/presets.py` and `src/photo_processor/api/settings_factory.py`
-- JSON settings persistence in `src/photo_processor/infra/settings_storage/json_settings_storage.py`
+- JSON settings persistence in `src/photo_processor/infra/settings_storage/`, with runtime storage resolved to `%ProgramData%\PhotoPrintPreparation\settings.json` on Windows
 - desktop GUI scaffold in `src/photo_processor/gui/` and `src/photo_processor/api/gui_app.py`
 - combined `Setup` tab for source/output configuration, simplified menu, and stronger action-button styling
 - input-format filtering and output-extension selection in the GUI settings model
+- real GUI actions for folder browsing, dry-run preview, full batch start, output-folder opening, and report rendering
 - translation layer in `src/photo_processor/app/i18n/` and `src/photo_processor/config/translations.py` with `en`, `ru`, and `he`
 - quality warnings for source images smaller than the target frame
 - unit and integration tests for math, paths, planning, and one-image processing in `tests/`
@@ -30,7 +31,7 @@ The current repository implements the first technical slice of the product:
 
 The code still has planned gaps:
 
-- live GUI processing workflow, preview, and packaging are not implemented yet
+- GUI packaging and richer preview beyond the current dry-run report are not implemented yet
 - advanced output policies beyond current strategies are not implemented yet
 
 ## Convergence with product specification

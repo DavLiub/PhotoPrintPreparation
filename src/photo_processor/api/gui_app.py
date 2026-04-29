@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import sys
-from pathlib import Path
 
+from photo_processor.app.controllers.processing_controller import ProcessingController
 from photo_processor.app.controllers.settings_controller import SettingsController
 from photo_processor.app.i18n.translator import Translator
 from photo_processor.gui.main_window import MainWindow
 from photo_processor.infra.settings_storage.json_settings_storage import JsonSettingsStorage
+from photo_processor.infra.settings_storage.storage_paths import resolve_settings_path
 
 
 def run_gui() -> int:
@@ -17,9 +18,10 @@ def run_gui() -> int:
 
     app = QApplication(sys.argv)
     translator = Translator(language="en")
-    storage = JsonSettingsStorage(Path("config/settings.json"))
-    controller = SettingsController(storage)
-    window = MainWindow(translator, controller)
+    storage = JsonSettingsStorage(resolve_settings_path())
+    settings_controller = SettingsController(storage)
+    processing_controller = ProcessingController()
+    window = MainWindow(translator, settings_controller, processing_controller)
     window.show()
     return app.exec()
 

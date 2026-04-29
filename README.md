@@ -15,9 +15,9 @@ Version `0.1` focuses on the non-UI foundation:
 - one-image Pillow processing pipeline
 - batch report structure
 - preset-based processing scenarios
-- desktop GUI scaffold with `en/ru/he` localization support
+- desktop GUI with `en/ru/he` localization support
 
-Preview and richer live processing behavior are the next stages.
+Preview and richer live processing behavior are still incomplete, but the GUI now supports folder selection, dry-run preview, full batch start, and report display.
 
 ## Quick start
 
@@ -32,7 +32,7 @@ python -m photo_processor --source "C:\Photos" --preset print_10x15
 python -m photo_processor.api.gui_app
 ```
 
-The CLI now persists last-used settings in `config/settings.json`.
+The CLI and GUI now persist last-used settings in `%ProgramData%\PhotoPrintPreparation\settings.json`.
 
 The current GUI is organized around three tabs:
 
@@ -40,6 +40,8 @@ The current GUI is organized around three tabs:
 - `Setup` also includes input-format checkboxes and output extension selection
 - `Processing` for resize and output constraints
 - `Report` for user-facing processing summary
+
+The GUI can now browse folders, save current settings, run dry-run preview, run full processing, and open the output folder.
 
 ## Layout
 

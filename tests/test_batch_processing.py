@@ -135,6 +135,26 @@ class BatchProcessingTestCase(unittest.TestCase):
         self.assertEqual(len(result.items), 2)
         self.assertEqual({item.source_path.suffix.lower() for item in result.items}, {".jpg", ".png"})
 
+    def test_run_reports_progress_from_zero_to_total(self) -> None:
+        source_dir = Path(self._testMethodName)
+        output_dir = source_dir / "out"
+        source_dir.mkdir(exist_ok=True)
+        output_dir.mkdir(exist_ok=True)
+        self.addCleanup(_cleanup_tree, source_dir)
+
+        (source_dir / "a.jpg").write_bytes(b"jpg")
+        (source_dir / "b.png").write_bytes(b"png")
+
+        progress_updates: list[tuple[int, int]] = []
+        settings = ProcessingSettings(source_folder=source_dir, output_folder=output_dir)
+
+        BatchProcessingUseCase(settings).run(
+            dry_run=True,
+            on_progress=lambda current, total: progress_updates.append((current, total)),
+        )
+
+        self.assertEqual(progress_updates, [(0, 2), (1, 2), (2, 2)])
+
 
 def _cleanup_tree(path: Path) -> None:
     for child in sorted(path.rglob("*"), reverse=True):

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-from pathlib import Path
 
 from photo_processor.app.reporting.report_builder import build_processing_report
 from photo_processor.api.settings_factory import build_settings_from_args, build_snapshot_from_settings
@@ -10,9 +9,7 @@ from photo_processor.config.presets import get_preset_ids
 from photo_processor.core.output_policy import ConflictStrategy
 from photo_processor.core.settings import ResizeMode, Units
 from photo_processor.infra.settings_storage.json_settings_storage import JsonSettingsStorage
-
-
-SETTINGS_PATH = Path("config/settings.json")
+from photo_processor.infra.settings_storage.storage_paths import resolve_settings_path
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -43,7 +40,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def run_cli() -> int:
-    storage = JsonSettingsStorage(SETTINGS_PATH)
+    storage = JsonSettingsStorage(resolve_settings_path())
     args = build_parser().parse_args()
     saved_snapshot = storage.load()
     settings = build_settings_from_args(args, saved_snapshot=saved_snapshot)

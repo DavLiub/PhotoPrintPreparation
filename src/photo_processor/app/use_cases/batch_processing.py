@@ -15,10 +15,16 @@ class BatchProcessingUseCase:
         self.settings = settings
         self.image_processor = ImageProcessor(settings)
 
-    def run(self, dry_run: bool = False) -> BatchProcessingResult:
+    def run(
+        self,
+        dry_run: bool = False,
+        on_progress: callable[[int, int], None] | None = None,
+    ) -> BatchProcessingResult:
         result = BatchProcessingResult()
         files = scan_supported_images(self.settings.source_folder, self.settings.source_formats)
         result.found_files = len(files)
+        if on_progress is not None:
+            on_progress(0, result.found_files)
 
         if not self.settings.source_folder.exists():
             result.add_item(
@@ -29,6 +35,8 @@ class BatchProcessingUseCase:
                     error_message=f"Source folder does not exist: {self.settings.source_folder}",
                 )
             )
+            if on_progress is not None:
+                on_progress(0, result.found_files)
             return result
 
         self.settings.output_folder.mkdir(parents=True, exist_ok=True)
@@ -48,6 +56,8 @@ class BatchProcessingUseCase:
                         warnings=["Skipped because the target output file already exists."],
                     )
                 )
+                if on_progress is not None:
+                    on_progress(len(result.items), result.found_files)
                 continue
             task = ImageTask(source_path=source_path, output_path=output_path)
 
@@ -60,6 +70,8 @@ class BatchProcessingUseCase:
                         warnings=["Dry run: output file was not written."],
                     )
                 )
+                if on_progress is not None:
+                    on_progress(len(result.items), result.found_files)
                 continue
 
             try:
@@ -72,5 +84,7 @@ class BatchProcessingUseCase:
                     error_message=str(exc),
                 )
             result.add_item(item)
+            if on_progress is not None:
+                on_progress(len(result.items), result.found_files)
 
         return result
