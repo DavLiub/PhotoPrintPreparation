@@ -167,6 +167,7 @@ try:
                   <li><b>{t("processing.dpi")}:</b> {t("help.desc.dpi")} <a href="https://en.wikipedia.org/wiki/Dots_per_inch">Wikipedia</a></li>
                   <li><b>{t("processing.auto_rotate")}:</b> {t("help.desc.auto_rotate")}</li>
                   <li><b>{t("processing.resize_mode")}:</b> {t("help.desc.resize_mode")}</li>
+                  <li><b>{t("processing.crop_anchor")}:</b> {t("help.desc.crop_anchor")}</li>
                   <li><b>{t("processing.max_file_size")}:</b> {t("help.desc.max_file_size")}</li>
                 </ul>
                 <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:14px 16px; margin:10px 0 0 0;">

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from photo_processor.core.settings import ResizeMode, Units
+from photo_processor.core.settings import CropAnchor, ResizeMode, Units
 
 try:
     from PySide6.QtWidgets import QCheckBox, QComboBox, QDoubleSpinBox, QFormLayout, QGroupBox, QLabel, QSpinBox, QVBoxLayout, QWidget
@@ -29,6 +29,9 @@ try:
             self.resize_mode_combo = QComboBox(self.group)
             for mode in ResizeMode:
                 self.resize_mode_combo.addItem("", mode.value)
+            self.crop_anchor_combo = QComboBox(self.group)
+            for anchor in CropAnchor:
+                self.crop_anchor_combo.addItem("", anchor.value)
 
             self.units_label = QLabel(self.group)
             self.width_label = QLabel(self.group)
@@ -36,6 +39,7 @@ try:
             self.dpi_label = QLabel(self.group)
             self.auto_rotate_label = QLabel(self.group)
             self.resize_mode_label = QLabel(self.group)
+            self.crop_anchor_label = QLabel(self.group)
             self.max_file_size_label = QLabel(self.group)
             form.addRow(self.units_label, self.units_combo)
             form.addRow(self.width_label, self.width_spin)
@@ -43,6 +47,7 @@ try:
             form.addRow(self.dpi_label, self.dpi_spin)
             form.addRow(self.auto_rotate_label, self.auto_rotate_check)
             form.addRow(self.resize_mode_label, self.resize_mode_combo)
+            form.addRow(self.crop_anchor_label, self.crop_anchor_combo)
             form.addRow(self.max_file_size_label, self.max_file_size_spin)
             layout.addWidget(self.group)
             layout.addStretch(1)
@@ -56,11 +61,14 @@ try:
             self.auto_rotate_label.setText(t("processing.auto_rotate"))
             self.auto_rotate_check.setText(t("processing.auto_rotate_enabled"))
             self.resize_mode_label.setText(t("processing.resize_mode"))
+            self.crop_anchor_label.setText(t("processing.crop_anchor"))
             self.max_file_size_label.setText(t("processing.max_file_size"))
             self.units_combo.setItemText(0, t("units.pixels"))
             self.units_combo.setItemText(1, t("units.centimeters"))
             for idx, mode in enumerate(ResizeMode):
                 self.resize_mode_combo.setItemText(idx, t(f"resize_mode.{mode.value}"))
+            for idx, anchor in enumerate(CropAnchor):
+                self.crop_anchor_combo.setItemText(idx, t(f"crop_anchor.{anchor.value}"))
 
 except ImportError:  # pragma: no cover - depends on environment
     class ProcessingTab:  # type: ignore[no-redef]

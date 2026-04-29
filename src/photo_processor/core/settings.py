@@ -25,6 +25,13 @@ class ResizeMode(str, Enum):
     FIT_HEIGHT = "fit_height"
 
 
+class CropAnchor(str, Enum):
+    CENTER = "center"
+    TOP_LEFT = "top_left"
+    TOP = "top"
+    LEFT = "left"
+
+
 SUPPORTED_INPUT_FORMATS = (".jpg", ".jpeg", ".png", ".bmp", ".webp")
 
 
@@ -37,6 +44,7 @@ class ProcessingSettings:
     units: Units = Units.PIXELS
     dpi: int = DEFAULT_DPI
     resize_mode: ResizeMode = ResizeMode.CONTAIN
+    crop_anchor: CropAnchor = CropAnchor.TOP_LEFT
     allow_both_orientations: bool = True
     auto_rotate: bool = True
     max_file_size_mb: float = DEFAULT_MAX_FILE_SIZE_MB

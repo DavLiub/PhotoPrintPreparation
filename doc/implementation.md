@@ -23,7 +23,7 @@ The current repository implements the first technical slice of the product:
 - combined `Setup` tab for source/output configuration, simplified menu, and stronger action-button styling
 - `Manual` tab for one-file preview, per-file fit-mode switching, output-name preview, and save-current output
 - input-format filtering and output-extension selection in the GUI settings model
-- explicit `auto_rotate` control in GUI processing settings and settings persistence
+- explicit `auto_rotate` and `crop_anchor` controls in GUI processing settings and settings persistence
 - real GUI actions for folder browsing, full batch start, output-folder opening, and report rendering
 - searchable GUI Help dialog with parameter descriptions and external reference links
 - translation layer in `src/photo_processor/app/i18n/` and `src/photo_processor/config/translations.py` with `en`, `ru`, and `he`

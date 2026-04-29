@@ -9,7 +9,7 @@ from photo_processor.app.i18n.translator import Translator
 from photo_processor.config.presets import PRESETS
 from photo_processor.core.output_policy import ConflictStrategy
 from photo_processor.core.image_task import ImageTask
-from photo_processor.core.settings import ProcessingSettings, ResizeMode, Units
+from photo_processor.core.settings import CropAnchor, ProcessingSettings, ResizeMode, Units
 from photo_processor.gui.dialogs.about_dialog import AboutDialog
 from photo_processor.gui.dialogs.help_dialog import HelpDialog
 from photo_processor.gui.image_preview import pil_image_to_qpixmap
@@ -147,6 +147,7 @@ try:
             self.processing_tab.dpi_spin.valueChanged.connect(self._refresh_manual_preview)
             self.processing_tab.auto_rotate_check.toggled.connect(self._refresh_manual_preview)
             self.processing_tab.resize_mode_combo.currentIndexChanged.connect(self._sync_manual_resize_mode_from_processing)
+            self.processing_tab.crop_anchor_combo.currentIndexChanged.connect(self._refresh_manual_preview)
             self.manual_tab.file_list.currentRowChanged.connect(self._refresh_manual_preview)
             self.manual_tab.manual_resize_mode_combo.currentIndexChanged.connect(self._refresh_manual_preview)
             self.manual_tab.previous_button.clicked.connect(self._select_previous_manual_file)
@@ -209,6 +210,7 @@ try:
                 dpi=int(self.processing_tab.dpi_spin.value()),
                 auto_rotate=self.processing_tab.auto_rotate_check.isChecked(),
                 resize_mode=ResizeMode(self.processing_tab.resize_mode_combo.currentData()),
+                crop_anchor=CropAnchor(self.processing_tab.crop_anchor_combo.currentData()),
                 max_file_size_mb=float(self.processing_tab.max_file_size_spin.value()),
                 source_formats=self.setup_tab.selected_source_formats(),
                 output_policy=OutputPolicy(
@@ -236,6 +238,7 @@ try:
             self._set_combo_data(self.processing_tab.units_combo, snapshot.units or Units.PIXELS.value)
             self._set_combo_data(self.processing_tab.resize_mode_combo, snapshot.resize_mode or ResizeMode.CONTAIN.value)
             self._set_combo_data(self.manual_tab.manual_resize_mode_combo, snapshot.resize_mode or ResizeMode.CONTAIN.value)
+            self._set_combo_data(self.processing_tab.crop_anchor_combo, snapshot.crop_anchor or CropAnchor.TOP_LEFT.value)
             self._set_combo_data(self.setup_tab.conflict_combo, snapshot.conflict_strategy or ConflictStrategy.ADD_COUNTER.value)
             if snapshot.preset_id:
                 self._set_combo_data(self.setup_tab.preset_combo, snapshot.preset_id)
@@ -253,6 +256,7 @@ try:
             self._set_combo_data(self.processing_tab.units_combo, Units.PIXELS.value)
             self._set_combo_data(self.processing_tab.resize_mode_combo, ResizeMode.CONTAIN.value)
             self._set_combo_data(self.manual_tab.manual_resize_mode_combo, ResizeMode.CONTAIN.value)
+            self._set_combo_data(self.processing_tab.crop_anchor_combo, CropAnchor.TOP_LEFT.value)
             self._set_combo_data(self.setup_tab.conflict_combo, ConflictStrategy.ADD_COUNTER.value)
             self._reset_session_views(enable_source_count=False)
 

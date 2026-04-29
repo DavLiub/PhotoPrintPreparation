@@ -7,7 +7,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from photo_processor.api.settings_factory import build_settings_from_args, build_snapshot_from_settings
 from photo_processor.core.output_policy import ConflictStrategy, OutputFormat
-from photo_processor.core.settings import ResizeMode, SUPPORTED_INPUT_FORMATS, Units
+from photo_processor.core.settings import CropAnchor, ResizeMode, SUPPORTED_INPUT_FORMATS, Units
 from photo_processor.core.settings_snapshot import SettingsSnapshot
 
 
@@ -33,6 +33,7 @@ class SettingsFactoryTestCase(unittest.TestCase):
         self.assertEqual(settings.height, 1000)
         self.assertEqual(settings.units, Units.PIXELS)
         self.assertEqual(settings.resize_mode, ResizeMode.CONTAIN)
+        self.assertEqual(settings.crop_anchor, CropAnchor.TOP_LEFT)
         self.assertEqual(settings.source_formats, SUPPORTED_INPUT_FORMATS)
         self.assertEqual(settings.output_policy.output_format, OutputFormat.JPEG)
 
@@ -109,6 +110,7 @@ class SettingsFactoryTestCase(unittest.TestCase):
                 dpi=200,
                 auto_rotate=False,
                 resize_mode="cover",
+                crop_anchor=CropAnchor.CENTER.value,
                 max_file_size_mb=1.2,
                 filename_suffix="_saved",
                 conflict_strategy=ConflictStrategy.SKIP.value,
@@ -122,6 +124,7 @@ class SettingsFactoryTestCase(unittest.TestCase):
         self.assertEqual(settings.dpi, 200)
         self.assertFalse(settings.auto_rotate)
         self.assertEqual(settings.resize_mode, ResizeMode.CONTAIN)
+        self.assertEqual(settings.crop_anchor, CropAnchor.CENTER)
         self.assertEqual(settings.output_policy.filename_suffix, "_saved")
         self.assertEqual(settings.output_policy.conflict_strategy, ConflictStrategy.SKIP)
         self.assertEqual(settings.source_formats, (".jpg", ".png"))
@@ -151,6 +154,7 @@ class SettingsFactoryTestCase(unittest.TestCase):
         self.assertEqual(snapshot.height, 1100)
         self.assertTrue(snapshot.auto_rotate)
         self.assertEqual(snapshot.resize_mode, ResizeMode.FIT_WIDTH.value)
+        self.assertEqual(snapshot.crop_anchor, CropAnchor.TOP_LEFT.value)
         self.assertEqual(snapshot.filename_suffix, "_done")
         self.assertEqual(snapshot.conflict_strategy, ConflictStrategy.OVERWRITE.value)
         self.assertEqual(snapshot.source_formats, SUPPORTED_INPUT_FORMATS)

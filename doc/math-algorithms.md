@@ -44,11 +44,28 @@ This is used by `contain` and may also apply to `fit_height`.
 
 ## Crop box
 
-When the resized image is larger than the target frame, crop is centered:
+When the resized image is larger than the target frame, crop placement depends on `crop_anchor`:
+
+- `center`: crop symmetrically from both sides
+- `top_left`: keep the upper-left area and crop from the right and bottom
+- `top`: keep the top area and center horizontally
+- `left`: keep the left area and center vertically
+
+Examples:
 
 ```text
+center:
 left = (resized_width - frame_width) // 2
 top = (resized_height - frame_height) // 2
+
+top_left:
+left = 0
+top = 0
+```
+
+Then:
+
+```text
 right = left + frame_width
 bottom = top + frame_height
 ```

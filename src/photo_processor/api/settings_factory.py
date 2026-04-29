@@ -11,7 +11,7 @@ from photo_processor.config.defaults import (
 )
 from photo_processor.config.presets import get_preset
 from photo_processor.core.output_policy import ConflictStrategy, OutputFormat, OutputPolicy
-from photo_processor.core.settings import ProcessingSettings, ResizeMode, SUPPORTED_INPUT_FORMATS, Units
+from photo_processor.core.settings import CropAnchor, ProcessingSettings, ResizeMode, SUPPORTED_INPUT_FORMATS, Units
 from photo_processor.core.settings_snapshot import SettingsSnapshot
 
 
@@ -22,6 +22,15 @@ def _parse_resize_mode(value: str | None) -> ResizeMode:
         return ResizeMode(value)
     except ValueError:
         return ResizeMode.CONTAIN
+
+
+def _parse_crop_anchor(value: str | None) -> CropAnchor:
+    if value is None:
+        return CropAnchor.TOP_LEFT
+    try:
+        return CropAnchor(value)
+    except ValueError:
+        return CropAnchor.TOP_LEFT
 
 
 def build_settings_from_args(
@@ -60,6 +69,7 @@ def build_settings_from_args(
             else _parse_resize_mode(snapshot.resize_mode)
         )
     )
+    crop_anchor = _parse_crop_anchor(snapshot.crop_anchor)
     max_file_size_mb = (
         args.max_file_size_mb
         if args.max_file_size_mb is not None
@@ -91,6 +101,7 @@ def build_settings_from_args(
         units=units,
         dpi=dpi,
         resize_mode=resize_mode,
+        crop_anchor=crop_anchor,
         allow_both_orientations=allow_both_orientations,
         auto_rotate=auto_rotate,
         max_file_size_mb=max_file_size_mb,
@@ -114,6 +125,7 @@ def build_snapshot_from_settings(settings: ProcessingSettings, preset_id: str | 
         dpi=settings.dpi,
         auto_rotate=settings.auto_rotate,
         resize_mode=settings.resize_mode.value,
+        crop_anchor=settings.crop_anchor.value,
         max_file_size_mb=settings.max_file_size_mb,
         filename_suffix=settings.output_policy.filename_suffix,
         conflict_strategy=settings.output_policy.conflict_strategy.value,

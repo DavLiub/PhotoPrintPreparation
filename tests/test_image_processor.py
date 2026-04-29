@@ -6,7 +6,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from photo_processor.core.image_task import ImageTask
-from photo_processor.core.settings import ProcessingSettings, ResizeMode
+from photo_processor.core.settings import CropAnchor, ProcessingSettings, ResizeMode
 from photo_processor.infra.imaging.image_processor import ImageProcessor
 
 PILLOW_AVAILABLE = importlib.util.find_spec("PIL") is not None
@@ -134,6 +134,42 @@ class ImageProcessorTestCase(unittest.TestCase):
         self.assertEqual(result_info.output_info.size, (1500, 1000))
         with Image.open(output_path) as result:
             self.assertEqual(result.size, (1500, 1000))
+
+    def test_process_fit_height_top_left_anchor_keeps_left_side(self) -> None:
+        source_dir = Path(self._testMethodName)
+        output_dir = source_dir / "out"
+        source_dir.mkdir(exist_ok=True)
+        output_dir.mkdir(exist_ok=True)
+        self.addCleanup(_cleanup_tree, source_dir)
+
+        source_path = source_dir / "anchor.png"
+        output_path = output_dir / "anchor_processed.jpg"
+        image = Image.new("RGB", (220, 100))
+        for x in range(220):
+            color = (255, 0, 0) if x < 110 else (0, 0, 255)
+            for y in range(100):
+                image.putpixel((x, y), color)
+        image.save(source_path, format="PNG")
+
+        settings = ProcessingSettings(
+            source_folder=source_dir,
+            output_folder=output_dir,
+            width=150,
+            height=100,
+            resize_mode=ResizeMode.FIT_HEIGHT,
+            crop_anchor=CropAnchor.TOP_LEFT,
+            max_file_size_mb=1.0,
+        )
+
+        ImageProcessor(settings).process(ImageTask(source_path=source_path, output_path=output_path))
+
+        with Image.open(output_path) as result:
+            left_pixel = result.getpixel((20, 50))
+            middle_pixel = result.getpixel((74, 50))
+            right_pixel = result.getpixel((140, 50))
+            self.assertGreater(left_pixel[0], left_pixel[2])
+            self.assertGreater(middle_pixel[0], middle_pixel[2])
+            self.assertGreater(right_pixel[2], right_pixel[0])
 
     def test_process_converts_alpha_image_to_jpeg(self) -> None:
         source_dir = Path(self._testMethodName)

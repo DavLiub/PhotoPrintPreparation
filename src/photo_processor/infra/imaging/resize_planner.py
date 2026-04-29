@@ -28,8 +28,20 @@ def build_resize_plan(
     if settings.resize_mode == ResizeMode.CONTAIN:
         plan = calculate_contain_size(source_width, source_height, target_width, target_height)
     elif settings.resize_mode == ResizeMode.FIT_WIDTH:
-        plan = calculate_fit_width_size(source_width, source_height, target_width, target_height)
+        plan = calculate_fit_width_size(
+            source_width,
+            source_height,
+            target_width,
+            target_height,
+            settings.crop_anchor,
+        )
     else:
-        plan = calculate_fit_height_size(source_width, source_height, target_width, target_height)
+        plan = calculate_fit_height_size(
+            source_width,
+            source_height,
+            target_width,
+            target_height,
+            settings.crop_anchor,
+        )
 
     return target_width, target_height, plan

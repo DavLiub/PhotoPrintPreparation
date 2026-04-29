@@ -35,6 +35,7 @@ class JsonSettingsStorageTestCase(unittest.TestCase):
             dpi=300,
             auto_rotate=False,
             resize_mode="contain",
+            crop_anchor="top_left",
             max_file_size_mb=5.0,
             filename_suffix="_processed",
             conflict_strategy="add_counter",
@@ -49,6 +50,7 @@ class JsonSettingsStorageTestCase(unittest.TestCase):
         data = json.loads(settings_path.read_text(encoding="utf-8"))
         self.assertEqual(data["preset_id"], "print_10x15")
         self.assertFalse(data["auto_rotate"])
+        self.assertEqual(data["crop_anchor"], "top_left")
 
 
 def _cleanup_tree(path: Path, create: bool) -> None:

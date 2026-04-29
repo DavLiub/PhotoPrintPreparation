@@ -38,7 +38,7 @@ The current GUI is organized around four tabs:
 
 - `Setup` for source and output folders plus preset selection
 - `Setup` also includes input-format checkboxes and output extension selection
-- `Processing` for resize, auto-rotate, and output constraints
+- `Processing` for resize, crop anchor, auto-rotate, and output constraints
 - `Manual` for one-file visual preview with alternate fit modes, output-name preview, and save-current behavior
 - `Report` for user-facing processing summary
 

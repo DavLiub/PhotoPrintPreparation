@@ -14,6 +14,7 @@ class SettingsSnapshot:
     dpi: int | None = None
     auto_rotate: bool | None = None
     resize_mode: str | None = None
+    crop_anchor: str | None = None
     max_file_size_mb: float | None = None
     filename_suffix: str | None = None
     conflict_strategy: str | None = None
