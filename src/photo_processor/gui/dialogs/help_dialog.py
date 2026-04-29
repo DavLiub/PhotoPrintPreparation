@@ -165,6 +165,7 @@ try:
                   <li><b>{t("processing.width")}:</b> {t("help.desc.width")}</li>
                   <li><b>{t("processing.height")}:</b> {t("help.desc.height")}</li>
                   <li><b>{t("processing.dpi")}:</b> {t("help.desc.dpi")} <a href="https://en.wikipedia.org/wiki/Dots_per_inch">Wikipedia</a></li>
+                  <li><b>{t("processing.auto_rotate")}:</b> {t("help.desc.auto_rotate")}</li>
                   <li><b>{t("processing.resize_mode")}:</b> {t("help.desc.resize_mode")}</li>
                   <li><b>{t("processing.max_file_size")}:</b> {t("help.desc.max_file_size")}</li>
                 </ul>

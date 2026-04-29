@@ -33,6 +33,7 @@ class JsonSettingsStorageTestCase(unittest.TestCase):
             height=10,
             units="centimeters",
             dpi=300,
+            auto_rotate=False,
             resize_mode="contain",
             max_file_size_mb=5.0,
             filename_suffix="_processed",
@@ -47,6 +48,7 @@ class JsonSettingsStorageTestCase(unittest.TestCase):
         self.assertEqual(storage.load(), expected)
         data = json.loads(settings_path.read_text(encoding="utf-8"))
         self.assertEqual(data["preset_id"], "print_10x15")
+        self.assertFalse(data["auto_rotate"])
 
 
 def _cleanup_tree(path: Path, create: bool) -> None:

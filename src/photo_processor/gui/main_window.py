@@ -145,6 +145,7 @@ try:
             self.processing_tab.height_spin.valueChanged.connect(self._refresh_manual_preview)
             self.processing_tab.units_combo.currentIndexChanged.connect(self._sync_manual_resize_mode_from_processing)
             self.processing_tab.dpi_spin.valueChanged.connect(self._refresh_manual_preview)
+            self.processing_tab.auto_rotate_check.toggled.connect(self._refresh_manual_preview)
             self.processing_tab.resize_mode_combo.currentIndexChanged.connect(self._sync_manual_resize_mode_from_processing)
             self.manual_tab.file_list.currentRowChanged.connect(self._refresh_manual_preview)
             self.manual_tab.manual_resize_mode_combo.currentIndexChanged.connect(self._refresh_manual_preview)
@@ -206,6 +207,7 @@ try:
                 height=float(self.processing_tab.height_spin.value()),
                 units=Units(self.processing_tab.units_combo.currentData()),
                 dpi=int(self.processing_tab.dpi_spin.value()),
+                auto_rotate=self.processing_tab.auto_rotate_check.isChecked(),
                 resize_mode=ResizeMode(self.processing_tab.resize_mode_combo.currentData()),
                 max_file_size_mb=float(self.processing_tab.max_file_size_spin.value()),
                 source_formats=self.setup_tab.selected_source_formats(),
@@ -226,6 +228,7 @@ try:
             self.processing_tab.width_spin.setValue(snapshot.width or 1500)
             self.processing_tab.height_spin.setValue(snapshot.height or 1000)
             self.processing_tab.dpi_spin.setValue(snapshot.dpi or 300)
+            self.processing_tab.auto_rotate_check.setChecked(True if snapshot.auto_rotate is None else snapshot.auto_rotate)
             self.processing_tab.max_file_size_spin.setValue(snapshot.max_file_size_mb or 2.0)
             self.setup_tab.suffix_edit.setText(snapshot.filename_suffix or "_processed")
             self.setup_tab.set_source_formats(snapshot.source_formats)
@@ -242,6 +245,7 @@ try:
             self.processing_tab.width_spin.setValue(1500)
             self.processing_tab.height_spin.setValue(1000)
             self.processing_tab.dpi_spin.setValue(300)
+            self.processing_tab.auto_rotate_check.setChecked(True)
             self.processing_tab.max_file_size_spin.setValue(2.0)
             self.setup_tab.suffix_edit.setText("_processed")
             self.setup_tab.set_source_formats(None)
@@ -266,6 +270,7 @@ try:
             self.processing_tab.width_spin.setValue(preset.width)
             self.processing_tab.height_spin.setValue(preset.height)
             self.processing_tab.dpi_spin.setValue(preset.dpi)
+            self.processing_tab.auto_rotate_check.setChecked(preset.auto_rotate)
             self.processing_tab.max_file_size_spin.setValue(preset.max_file_size_mb)
             self._set_combo_data(self.processing_tab.units_combo, preset.units.value)
             self._set_combo_data(self.processing_tab.resize_mode_combo, preset.resize_mode.value)
@@ -507,20 +512,24 @@ try:
                 self.manual_tab.clear_preview()
                 return
             try:
+                preview_settings = self._manual_preview_settings()
                 image, source_info, target_size, target_info = build_manual_preview(
                     source_path,
-                    self._manual_preview_settings(),
+                    preview_settings,
                 )
             except Exception:
                 self.manual_tab.clear_preview()
                 return
             pixmap = pil_image_to_qpixmap(image)
             self.manual_tab.set_preview_pixmap(pixmap)
-            self.manual_tab.source_info_value.setText(
-                f"{source_info.width}x{source_info.height} | {source_info.mode} | {source_info.image_format or '-'}"
-            )
-            self.manual_tab.target_info_value.setText(
-                f"{target_size[0]}x{target_size[1]} | {target_info.mode}"
+            output_path = build_output_path(source_path, preview_settings.output_folder, preview_settings.output_policy)
+            self.manual_tab.set_preview_metadata(
+                selected_file=source_path.name,
+                source_info=f"{source_info.width}x{source_info.height} | {source_info.mode} | {source_info.image_format or '-'}",
+                target_info=f"{target_size[0]}x{target_size[1]} | {target_info.mode}",
+                output_file=output_path.name if output_path is not None else self.translator.text("manual.output_skipped"),
+                current_index=self.manual_tab.file_list.currentRow(),
+                total_files=len(self.manual_files),
             )
 
         def _select_previous_manual_file(self) -> None:

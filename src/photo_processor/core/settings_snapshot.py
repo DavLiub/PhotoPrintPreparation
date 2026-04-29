@@ -12,6 +12,7 @@ class SettingsSnapshot:
     height: float | None = None
     units: str | None = None
     dpi: int | None = None
+    auto_rotate: bool | None = None
     resize_mode: str | None = None
     max_file_size_mb: float | None = None
     filename_suffix: str | None = None

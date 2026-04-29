@@ -46,6 +46,11 @@ def build_settings_from_args(
     dpi = args.dpi if args.dpi is not None else (
         preset.dpi if preset else (snapshot.dpi if snapshot.dpi is not None else DEFAULT_DPI)
     )
+    auto_rotate = (
+        preset.auto_rotate
+        if preset
+        else (snapshot.auto_rotate if snapshot.auto_rotate is not None else True)
+    )
     resize_mode = (
         _parse_resize_mode(args.resize_mode)
         if args.resize_mode is not None
@@ -69,7 +74,6 @@ def build_settings_from_args(
         )
     )
     allow_both_orientations = preset.allow_both_orientations if preset else True
-    auto_rotate = preset.auto_rotate if preset else True
     filename_suffix = args.suffix if args.suffix is not None else (snapshot.filename_suffix or "_processed")
     conflict_strategy = ConflictStrategy(args.conflict_strategy) if args.conflict_strategy is not None else (
         ConflictStrategy(snapshot.conflict_strategy)
@@ -108,6 +112,7 @@ def build_snapshot_from_settings(settings: ProcessingSettings, preset_id: str | 
         height=settings.height,
         units=settings.units.value,
         dpi=settings.dpi,
+        auto_rotate=settings.auto_rotate,
         resize_mode=settings.resize_mode.value,
         max_file_size_mb=settings.max_file_size_mb,
         filename_suffix=settings.output_policy.filename_suffix,

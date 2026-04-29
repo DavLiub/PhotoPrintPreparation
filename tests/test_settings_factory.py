@@ -57,6 +57,7 @@ class SettingsFactoryTestCase(unittest.TestCase):
         self.assertEqual(settings.height, 10)
         self.assertEqual(settings.units, Units.CENTIMETERS)
         self.assertEqual(settings.dpi, 300)
+        self.assertTrue(settings.auto_rotate)
         self.assertEqual(settings.resize_mode, ResizeMode.CONTAIN)
         self.assertEqual(settings.max_file_size_mb, 5.0)
 
@@ -106,6 +107,7 @@ class SettingsFactoryTestCase(unittest.TestCase):
                 height=1200,
                 units=Units.PIXELS.value,
                 dpi=200,
+                auto_rotate=False,
                 resize_mode="cover",
                 max_file_size_mb=1.2,
                 filename_suffix="_saved",
@@ -118,6 +120,7 @@ class SettingsFactoryTestCase(unittest.TestCase):
         self.assertEqual(settings.width, 1600)
         self.assertEqual(settings.height, 1200)
         self.assertEqual(settings.dpi, 200)
+        self.assertFalse(settings.auto_rotate)
         self.assertEqual(settings.resize_mode, ResizeMode.CONTAIN)
         self.assertEqual(settings.output_policy.filename_suffix, "_saved")
         self.assertEqual(settings.output_policy.conflict_strategy, ConflictStrategy.SKIP)
@@ -146,6 +149,7 @@ class SettingsFactoryTestCase(unittest.TestCase):
         self.assertEqual(snapshot.preset_id, "photo_report")
         self.assertEqual(snapshot.width, 1800)
         self.assertEqual(snapshot.height, 1100)
+        self.assertTrue(snapshot.auto_rotate)
         self.assertEqual(snapshot.resize_mode, ResizeMode.FIT_WIDTH.value)
         self.assertEqual(snapshot.filename_suffix, "_done")
         self.assertEqual(snapshot.conflict_strategy, ConflictStrategy.OVERWRITE.value)
