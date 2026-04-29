@@ -55,6 +55,15 @@ Purpose:
 - describe one processed file or one failed file
 - carry warnings, output metadata, and future GUI-facing details
 
+### ImageInfo
+
+Defined in `src/photo_processor/core/image_info.py`.
+
+Purpose:
+
+- describe image width, height, mode, and format
+- normalize source and output metadata into one reusable structure
+
 ## Intended evolution
 
 The current core model set is acceptable for a small prototype, but the target architecture should separate:
@@ -67,5 +76,4 @@ The current core model set is acceptable for a small prototype, but the target a
 
 - `FrameSize` value object with unit-aware conversion
 - `OutputPolicy` for suffix, format, and overwrite behavior
-- `ImageInfo` for width, height, EXIF orientation, and mode
 - `ProcessingReport` for batch-level summary plus per-file details

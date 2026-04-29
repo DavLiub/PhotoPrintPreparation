@@ -41,10 +41,18 @@ class ImageProcessorTestCase(unittest.TestCase):
 
         self.assertTrue(output_path.exists())
         self.assertTrue(result_info.success)
+        self.assertIsNotNone(result_info.source_info)
+        self.assertEqual(result_info.source_info.image_format, "PNG")
+        self.assertEqual(result_info.source_info.size, (1200, 800))
         self.assertEqual(result_info.target_size, (1500, 1000))
-        self.assertEqual(result_info.output_size, (1500, 1000))
+        self.assertIsNotNone(result_info.output_info)
+        self.assertEqual(result_info.output_info.size, (1500, 1000))
+        self.assertEqual(result_info.output_info.image_format, "JPEG")
         self.assertIsNotNone(result_info.output_file_size_bytes)
         self.assertIsNotNone(result_info.output_quality)
+        self.assertTrue(
+            any("smaller than the target frame" in warning for warning in result_info.warnings)
+        )
         with Image.open(output_path) as result:
             self.assertEqual(result.format, "JPEG")
             self.assertEqual(result.size, (1500, 1000))
@@ -98,7 +106,7 @@ class ImageProcessorTestCase(unittest.TestCase):
         result_info = ImageProcessor(settings).process(ImageTask(source_path=source_path, output_path=output_path))
 
         self.assertEqual(result_info.target_size, (1500, 1000))
-        self.assertEqual(result_info.output_size, (1500, 1000))
+        self.assertEqual(result_info.output_info.size, (1500, 1000))
         with Image.open(output_path) as result:
             self.assertEqual(result.size, (1500, 1000))
 
@@ -124,7 +132,7 @@ class ImageProcessorTestCase(unittest.TestCase):
 
         result_info = ImageProcessor(settings).process(ImageTask(source_path=source_path, output_path=output_path))
 
-        self.assertEqual(result_info.output_size, (1500, 1000))
+        self.assertEqual(result_info.output_info.size, (1500, 1000))
         with Image.open(output_path) as result:
             self.assertEqual(result.size, (1500, 1000))
 
@@ -150,7 +158,7 @@ class ImageProcessorTestCase(unittest.TestCase):
 
         result_info = ImageProcessor(settings).process(ImageTask(source_path=source_path, output_path=output_path))
 
-        self.assertEqual(result_info.output_size, (1500, 1000))
+        self.assertEqual(result_info.output_info.size, (1500, 1000))
         with Image.open(output_path) as result:
             self.assertEqual(result.size, (1500, 1000))
 
@@ -177,9 +185,37 @@ class ImageProcessorTestCase(unittest.TestCase):
         result_info = ImageProcessor(settings).process(ImageTask(source_path=source_path, output_path=output_path))
 
         self.assertTrue(result_info.success)
+        self.assertEqual(result_info.source_info.mode, "RGBA")
+        self.assertEqual(result_info.output_info.mode, "RGB")
         with Image.open(output_path) as result:
             self.assertEqual(result.format, "JPEG")
             self.assertEqual(result.mode, "RGB")
+
+    def test_process_does_not_warn_about_size_when_source_is_large_enough(self) -> None:
+        source_dir = Path(self._testMethodName)
+        output_dir = source_dir / "out"
+        source_dir.mkdir(exist_ok=True)
+        output_dir.mkdir(exist_ok=True)
+        self.addCleanup(_cleanup_tree, source_dir)
+
+        source_path = source_dir / "large.png"
+        output_path = output_dir / "large_processed.jpg"
+        Image.new("RGB", (3200, 2400), (15, 25, 35)).save(source_path, format="PNG")
+
+        settings = ProcessingSettings(
+            source_folder=source_dir,
+            output_folder=output_dir,
+            width=1500,
+            height=1000,
+            resize_mode=ResizeMode.CONTAIN,
+            max_file_size_mb=1.0,
+        )
+
+        result_info = ImageProcessor(settings).process(ImageTask(source_path=source_path, output_path=output_path))
+
+        self.assertFalse(
+            any("smaller than the target frame" in warning for warning in result_info.warnings)
+        )
 
     def test_process_raises_for_broken_image_file(self) -> None:
         source_dir = Path(self._testMethodName)

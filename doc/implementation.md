@@ -13,6 +13,8 @@ The current repository implements the first technical slice of the product:
 - one-image processing in `src/photo_processor/infra/imaging/`
 - batch orchestration and result aggregation in `src/photo_processor/app/use_cases/batch_processing.py`
 - per-file structured results in `src/photo_processor/core/single_image_result.py`
+- image metadata normalization in `src/photo_processor/core/image_info.py`
+- quality warnings for source images smaller than the target frame
 - unit and integration tests for math, paths, planning, and one-image processing in `tests/`
 
 ## Planned next
