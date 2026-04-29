@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from photo_processor.gui.icon_provider import build_icon, help_icon_path
+
 try:
     from PySide6.QtCore import Qt
     from PySide6.QtGui import QTextCursor
@@ -89,6 +91,7 @@ try:
         def retranslate(self) -> None:
             t = self.translator.text
             self.setWindowTitle(t("help.title"))
+            self.setWindowIcon(build_icon(help_icon_path()))
             self.title_label.setText(t("help.title"))
             self.subtitle_label.setText(t("help.overview"))
             self.search_label.setText(t("help.search.label"))

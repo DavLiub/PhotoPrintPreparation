@@ -10,10 +10,20 @@ from photo_processor.core.output_policy import ConflictStrategy
 from photo_processor.core.settings import ProcessingSettings, ResizeMode, Units
 from photo_processor.gui.dialogs.about_dialog import AboutDialog
 from photo_processor.gui.dialogs.help_dialog import HelpDialog
+from photo_processor.gui.icon_provider import (
+    about_icon_path,
+    app_icon_path,
+    build_icon,
+    flag_en_path,
+    flag_he_path,
+    flag_ru_path,
+    help_icon_path,
+)
 from photo_processor.gui.processing_worker import ProcessingWorker
 from photo_processor.gui.tabs.processing_tab import ProcessingTab
 from photo_processor.gui.tabs.report_tab import ReportTab
 from photo_processor.gui.tabs.setup_tab import SetupTab
+from photo_processor.infra.filesystem.file_scanner import scan_supported_images
 
 try:
     from PySide6.QtCore import QThread, QUrl
@@ -56,6 +66,7 @@ try:
 
         def _setup_ui(self) -> None:
             self.setMinimumSize(980, 680)
+            self.setWindowIcon(build_icon(app_icon_path()))
             self._build_menu()
             self._build_central_widget()
             self.setStatusBar(QStatusBar(self))
@@ -75,6 +86,11 @@ try:
             self.lang_ru_action.triggered.connect(lambda: self._switch_language("ru"))
             self.lang_he_action = QAction(self)
             self.lang_he_action.triggered.connect(lambda: self._switch_language("he"))
+            self.help_action.setIcon(build_icon(help_icon_path()))
+            self.about_action.setIcon(build_icon(about_icon_path()))
+            self.lang_en_action.setIcon(build_icon(flag_en_path()))
+            self.lang_ru_action.setIcon(build_icon(flag_ru_path()))
+            self.lang_he_action.setIcon(build_icon(flag_he_path()))
             menu_bar.addMenu(self.language_menu)
             menu_bar.addMenu(self.help_menu)
             self.language_menu.addAction(self.lang_en_action)
@@ -105,6 +121,9 @@ try:
             self.progress_count_label = QLabel(root)
             self.setup_tab.source_browse_button.clicked.connect(self._choose_source_folder)
             self.setup_tab.output_browse_button.clicked.connect(self._choose_output_folder)
+            self.setup_tab.source_path_edit.textChanged.connect(self._refresh_source_file_count)
+            for checkbox in self.setup_tab.format_checkboxes.values():
+                checkbox.toggled.connect(self._refresh_source_file_count)
             self.preview_button.clicked.connect(self._preview_processing)
             self.start_button.clicked.connect(self._start_processing)
             self.open_output_button.clicked.connect(self._open_output_folder)
@@ -194,6 +213,7 @@ try:
             self._set_combo_data(self.setup_tab.conflict_combo, snapshot.conflict_strategy or ConflictStrategy.ADD_COUNTER.value)
             if snapshot.preset_id:
                 self._set_combo_data(self.setup_tab.preset_combo, snapshot.preset_id)
+            self._refresh_source_file_count()
 
         def _apply_defaults(self) -> None:
             self.processing_tab.width_spin.setValue(1500)
@@ -206,6 +226,7 @@ try:
             self._set_combo_data(self.processing_tab.units_combo, Units.PIXELS.value)
             self._set_combo_data(self.processing_tab.resize_mode_combo, ResizeMode.CONTAIN.value)
             self._set_combo_data(self.setup_tab.conflict_combo, ConflictStrategy.ADD_COUNTER.value)
+            self._refresh_source_file_count()
 
         def _set_combo_data(self, combo, value: str | None) -> None:
             for index in range(combo.count()):
@@ -385,12 +406,25 @@ try:
             self.tabs.setEnabled(not is_running)
             if is_running:
                 self.statusBar().showMessage(self.translator.text("status.processing_started"))
+            else:
+                self._refresh_source_file_count()
 
         def _update_progress(self, current: int, total: int) -> None:
             safe_total = max(total, 0)
             self.progress_bar.setMaximum(max(safe_total, 1))
             self.progress_bar.setValue(min(current, max(safe_total, 1)))
             self.progress_count_label.setText(f"({current}/{safe_total})")
+
+        def _refresh_source_file_count(self) -> None:
+            if self.processing_thread is not None:
+                return
+            source_text = self.setup_tab.source_path_edit.text().strip()
+            if not source_text:
+                self._update_progress(0, 0)
+                return
+            source_folder = Path(source_text).expanduser()
+            total = len(scan_supported_images(source_folder, self.setup_tab.selected_source_formats()))
+            self._update_progress(0, total)
 
         def _open_output_folder(self) -> None:
             output_folder = Path(self.setup_tab.output_path_edit.text() or self._build_settings().output_folder).resolve()

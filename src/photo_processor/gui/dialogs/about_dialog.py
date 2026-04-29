@@ -7,6 +7,7 @@ from photo_processor.config.app_info import (
     APP_NAME,
     APP_VERSION,
 )
+from photo_processor.gui.icon_provider import about_icon_path, build_icon
 
 try:
     from PySide6.QtWidgets import QDialog, QLabel, QPushButton, QTextBrowser, QVBoxLayout, QWidget
@@ -45,6 +46,7 @@ try:
 
         def retranslate(self) -> None:
             self.setWindowTitle("About")
+            self.setWindowIcon(build_icon(about_icon_path()))
             self.title_label.setText(APP_NAME)
             self.close_button.setText("Close")
             self.content.setHtml(

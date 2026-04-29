@@ -21,6 +21,7 @@ try:
             self.height_spin.setMaximum(100000)
             self.dpi_spin = QSpinBox(self.group)
             self.dpi_spin.setRange(1, 2400)
+            self.dpi_spin.setSingleStep(50)
             self.max_file_size_spin = QDoubleSpinBox(self.group)
             self.max_file_size_spin.setRange(0.1, 1000)
             self.max_file_size_spin.setSingleStep(0.1)

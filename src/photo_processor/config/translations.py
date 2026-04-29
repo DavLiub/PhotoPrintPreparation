@@ -108,8 +108,8 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "conflict.overwrite": "Overwrite",
         "conflict.skip": "Skip existing",
         "lang.english": "English",
-        "lang.russian": "Russian",
-        "lang.hebrew": "Hebrew",
+        "lang.russian": "Русский",
+        "lang.hebrew": "עברית",
     },
     "ru": {
         "app.title": "Подготовка фото к печати",
