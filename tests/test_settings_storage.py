@@ -37,6 +37,8 @@ class JsonSettingsStorageTestCase(unittest.TestCase):
             max_file_size_mb=5.0,
             filename_suffix="_processed",
             conflict_strategy="add_counter",
+            source_formats=(".jpg", ".png"),
+            output_format="jpeg",
         )
 
         storage.save(expected)

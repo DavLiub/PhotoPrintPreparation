@@ -16,3 +16,5 @@ class SettingsSnapshot:
     max_file_size_mb: float | None = None
     filename_suffix: str | None = None
     conflict_strategy: str | None = None
+    source_formats: tuple[str, ...] | None = None
+    output_format: str | None = None

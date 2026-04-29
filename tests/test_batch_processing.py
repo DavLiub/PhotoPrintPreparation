@@ -112,6 +112,29 @@ class BatchProcessingTestCase(unittest.TestCase):
         self.assertTrue(any(item.success for item in result.items))
         self.assertTrue(any((item.error_message or "") == "broken file" for item in result.items))
 
+    def test_selected_source_formats_filter_scanned_files(self) -> None:
+        source_dir = Path(self._testMethodName)
+        output_dir = source_dir / "out"
+        source_dir.mkdir(exist_ok=True)
+        output_dir.mkdir(exist_ok=True)
+        self.addCleanup(_cleanup_tree, source_dir)
+
+        (source_dir / "a.jpg").write_bytes(b"jpg")
+        (source_dir / "b.png").write_bytes(b"png")
+        (source_dir / "c.bmp").write_bytes(b"bmp")
+
+        settings = ProcessingSettings(
+            source_folder=source_dir,
+            output_folder=output_dir,
+            source_formats=(".jpg", ".png"),
+        )
+
+        result = BatchProcessingUseCase(settings).run(dry_run=True)
+
+        self.assertEqual(result.found_files, 2)
+        self.assertEqual(len(result.items), 2)
+        self.assertEqual({item.source_path.suffix.lower() for item in result.items}, {".jpg", ".png"})
+
 
 def _cleanup_tree(path: Path) -> None:
     for child in sorted(path.rglob("*"), reverse=True):

@@ -20,7 +20,9 @@ The current repository implements the first technical slice of the product:
 - preset registry and preset-aware CLI settings resolution in `src/photo_processor/config/presets.py` and `src/photo_processor/api/settings_factory.py`
 - JSON settings persistence in `src/photo_processor/infra/settings_storage/json_settings_storage.py`
 - desktop GUI scaffold in `src/photo_processor/gui/` and `src/photo_processor/api/gui_app.py`
-- English-first translation layer in `src/photo_processor/app/i18n/` and `src/photo_processor/config/translations.py`
+- combined `Setup` tab for source/output configuration, simplified menu, and stronger action-button styling
+- input-format filtering and output-extension selection in the GUI settings model
+- translation layer in `src/photo_processor/app/i18n/` and `src/photo_processor/config/translations.py` with `en`, `ru`, and `he`
 - quality warnings for source images smaller than the target frame
 - unit and integration tests for math, paths, planning, and one-image processing in `tests/`
 

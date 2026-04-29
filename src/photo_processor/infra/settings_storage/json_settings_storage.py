@@ -16,6 +16,8 @@ class JsonSettingsStorage:
             return None
 
         data = json.loads(self.path.read_text(encoding="utf-8"))
+        if isinstance(data.get("source_formats"), list):
+            data["source_formats"] = tuple(data["source_formats"])
         return SettingsSnapshot(**data)
 
     def save(self, snapshot: SettingsSnapshot) -> None:

@@ -6,8 +6,8 @@ import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from photo_processor.api.settings_factory import build_settings_from_args, build_snapshot_from_settings
-from photo_processor.core.output_policy import ConflictStrategy
-from photo_processor.core.settings import ResizeMode, Units
+from photo_processor.core.output_policy import ConflictStrategy, OutputFormat
+from photo_processor.core.settings import ResizeMode, SUPPORTED_INPUT_FORMATS, Units
 from photo_processor.core.settings_snapshot import SettingsSnapshot
 
 
@@ -33,6 +33,8 @@ class SettingsFactoryTestCase(unittest.TestCase):
         self.assertEqual(settings.height, 1000)
         self.assertEqual(settings.units, Units.PIXELS)
         self.assertEqual(settings.resize_mode, ResizeMode.CONTAIN)
+        self.assertEqual(settings.source_formats, SUPPORTED_INPUT_FORMATS)
+        self.assertEqual(settings.output_policy.output_format, OutputFormat.JPEG)
 
     def test_factory_uses_preset_values(self) -> None:
         settings = build_settings_from_args(
@@ -108,6 +110,8 @@ class SettingsFactoryTestCase(unittest.TestCase):
                 max_file_size_mb=1.2,
                 filename_suffix="_saved",
                 conflict_strategy=ConflictStrategy.SKIP.value,
+                source_formats=(".jpg", ".png"),
+                output_format=OutputFormat.JPEG.value,
             ),
         )
 
@@ -117,6 +121,8 @@ class SettingsFactoryTestCase(unittest.TestCase):
         self.assertEqual(settings.resize_mode, ResizeMode.COVER)
         self.assertEqual(settings.output_policy.filename_suffix, "_saved")
         self.assertEqual(settings.output_policy.conflict_strategy, ConflictStrategy.SKIP)
+        self.assertEqual(settings.source_formats, (".jpg", ".png"))
+        self.assertEqual(settings.output_policy.output_format, OutputFormat.JPEG)
 
     def test_build_snapshot_from_settings_serializes_runtime_values(self) -> None:
         settings = build_settings_from_args(
@@ -143,3 +149,5 @@ class SettingsFactoryTestCase(unittest.TestCase):
         self.assertEqual(snapshot.resize_mode, ResizeMode.FIT_WIDTH.value)
         self.assertEqual(snapshot.filename_suffix, "_done")
         self.assertEqual(snapshot.conflict_strategy, ConflictStrategy.OVERWRITE.value)
+        self.assertEqual(snapshot.source_formats, SUPPORTED_INPUT_FORMATS)
+        self.assertEqual(snapshot.output_format, OutputFormat.JPEG.value)

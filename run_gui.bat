@@ -1,3 +1,3 @@
 @echo off
 set PYTHONPATH=%CD%\src
-python -m photo_processor.api.gui_app
+.\.venv\Scripts\python.exe -m photo_processor.api.gui_app

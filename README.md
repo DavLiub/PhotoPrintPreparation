@@ -15,7 +15,7 @@ Version `0.1` focuses on the non-UI foundation:
 - one-image Pillow processing pipeline
 - batch report structure
 - preset-based processing scenarios
-- desktop GUI scaffold with English-first localization support
+- desktop GUI scaffold with `en/ru/he` localization support
 
 Preview and richer live processing behavior are the next stages.
 
@@ -33,6 +33,13 @@ python -m photo_processor.api.gui_app
 ```
 
 The CLI now persists last-used settings in `config/settings.json`.
+
+The current GUI is organized around three tabs:
+
+- `Setup` for source and output folders plus preset selection
+- `Setup` also includes input-format checkboxes and output extension selection
+- `Processing` for resize and output constraints
+- `Report` for user-facing processing summary
 
 ## Layout
 

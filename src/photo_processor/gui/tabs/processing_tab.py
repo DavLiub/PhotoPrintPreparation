@@ -3,7 +3,7 @@ from __future__ import annotations
 from photo_processor.core.settings import ResizeMode, Units
 
 try:
-    from PySide6.QtWidgets import QComboBox, QDoubleSpinBox, QFormLayout, QGroupBox, QSpinBox, QVBoxLayout, QWidget
+    from PySide6.QtWidgets import QComboBox, QDoubleSpinBox, QFormLayout, QGroupBox, QLabel, QSpinBox, QVBoxLayout, QWidget
 
     class ProcessingTab(QWidget):
         def __init__(self, parent: QWidget | None = None) -> None:
@@ -28,18 +28,18 @@ try:
             for mode in ResizeMode:
                 self.resize_mode_combo.addItem("", mode.value)
 
-            form.addRow("", self.units_combo)
-            form.addRow("", self.width_spin)
-            form.addRow("", self.height_spin)
-            form.addRow("", self.dpi_spin)
-            form.addRow("", self.resize_mode_combo)
-            form.addRow("", self.max_file_size_spin)
-            self.units_label = form.labelForField(self.units_combo)
-            self.width_label = form.labelForField(self.width_spin)
-            self.height_label = form.labelForField(self.height_spin)
-            self.dpi_label = form.labelForField(self.dpi_spin)
-            self.resize_mode_label = form.labelForField(self.resize_mode_combo)
-            self.max_file_size_label = form.labelForField(self.max_file_size_spin)
+            self.units_label = QLabel(self.group)
+            self.width_label = QLabel(self.group)
+            self.height_label = QLabel(self.group)
+            self.dpi_label = QLabel(self.group)
+            self.resize_mode_label = QLabel(self.group)
+            self.max_file_size_label = QLabel(self.group)
+            form.addRow(self.units_label, self.units_combo)
+            form.addRow(self.width_label, self.width_spin)
+            form.addRow(self.height_label, self.height_spin)
+            form.addRow(self.dpi_label, self.dpi_spin)
+            form.addRow(self.resize_mode_label, self.resize_mode_combo)
+            form.addRow(self.max_file_size_label, self.max_file_size_spin)
             layout.addWidget(self.group)
             layout.addStretch(1)
 

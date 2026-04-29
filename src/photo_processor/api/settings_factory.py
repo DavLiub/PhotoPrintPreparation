@@ -11,7 +11,7 @@ from photo_processor.config.defaults import (
 )
 from photo_processor.config.presets import get_preset
 from photo_processor.core.output_policy import ConflictStrategy, OutputFormat, OutputPolicy
-from photo_processor.core.settings import ProcessingSettings, ResizeMode, Units
+from photo_processor.core.settings import ProcessingSettings, ResizeMode, SUPPORTED_INPUT_FORMATS, Units
 from photo_processor.core.settings_snapshot import SettingsSnapshot
 
 
@@ -67,6 +67,8 @@ def build_settings_from_args(
         if snapshot.conflict_strategy is not None
         else ConflictStrategy.ADD_COUNTER
     )
+    source_formats = snapshot.source_formats or SUPPORTED_INPUT_FORMATS
+    output_format = OutputFormat(snapshot.output_format) if snapshot.output_format is not None else OutputFormat.JPEG
 
     return ProcessingSettings(
         source_folder=source_folder,
@@ -79,9 +81,10 @@ def build_settings_from_args(
         allow_both_orientations=allow_both_orientations,
         auto_rotate=auto_rotate,
         max_file_size_mb=max_file_size_mb,
+        source_formats=tuple(source_formats),
         output_policy=OutputPolicy(
             filename_suffix=filename_suffix,
-            output_format=OutputFormat.JPEG,
+            output_format=output_format,
             conflict_strategy=conflict_strategy,
         ),
     )
@@ -100,4 +103,6 @@ def build_snapshot_from_settings(settings: ProcessingSettings, preset_id: str | 
         max_file_size_mb=settings.max_file_size_mb,
         filename_suffix=settings.output_policy.filename_suffix,
         conflict_strategy=settings.output_policy.conflict_strategy.value,
+        source_formats=settings.source_formats,
+        output_format=settings.output_policy.output_format.value,
     )
