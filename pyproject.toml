@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "photo-print-preparation"
+version = "0.1.0"
+description = "Batch photo preparation core for print and report workflows"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = []
+
+[project.optional-dependencies]
+image = ["Pillow>=10.0"]
+
+[project.scripts]
+photo-processor = "photo_processor.main:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

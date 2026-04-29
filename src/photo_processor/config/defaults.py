@@ -1,0 +1,9 @@
+from __future__ import annotations
+
+DEFAULT_WIDTH = 1500
+DEFAULT_HEIGHT = 1000
+DEFAULT_DPI = 300
+DEFAULT_MAX_FILE_SIZE_MB = 2.0
+DEFAULT_FILENAME_SUFFIX = "_processed"
+DEFAULT_OUTPUT_FORMAT = "jpeg"
+
