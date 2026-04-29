@@ -43,6 +43,7 @@ The current GUI is organized around three tabs:
 
 The GUI can now browse folders, save current settings, run dry-run preview, run full processing, and open the output folder.
 It also includes a searchable Help dialog with parameter descriptions and external reference links such as DPI on Wikipedia.
+The `About` dialog now shows the product name, version, license model, and copyright.
 
 ## Layout
 

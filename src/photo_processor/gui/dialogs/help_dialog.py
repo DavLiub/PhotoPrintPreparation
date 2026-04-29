@@ -38,10 +38,10 @@ try:
             layout.setSpacing(12)
 
             self.title_label = QLabel(self)
-            self.title_label.setStyleSheet("font-size: 22px; font-weight: 700; color: #0f172a;")
+            self.title_label.setStyleSheet("font-size: 28px; font-weight: 700; color: #0f172a;")
             self.subtitle_label = QLabel(self)
             self.subtitle_label.setWordWrap(True)
-            self.subtitle_label.setStyleSheet("font-size: 13px; color: #475569;")
+            self.subtitle_label.setStyleSheet("font-size: 15px; color: #475569;")
 
             search_row = QHBoxLayout()
             search_row.setSpacing(8)
@@ -62,15 +62,15 @@ try:
             self.sections_list.setMinimumWidth(220)
             self.sections_list.currentRowChanged.connect(self._show_section)
             self.sections_list.setStyleSheet(
-                "QListWidget { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 8px; }"
-                "QListWidget::item { padding: 10px 12px; border-radius: 8px; }"
+                "QListWidget { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 8px; font-size: 15px; }"
+                "QListWidget::item { padding: 12px 14px; border-radius: 8px; }"
                 "QListWidget::item:selected { background: #dbeafe; color: #1d4ed8; font-weight: 600; }"
             )
 
             self.browser = QTextBrowser(self)
             self.browser.setOpenExternalLinks(True)
             self.browser.setStyleSheet(
-                "QTextBrowser { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; }"
+                "QTextBrowser { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 18px; font-size: 15px; }"
             )
             self.browser.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
 
@@ -95,6 +95,11 @@ try:
             self.search_edit.setPlaceholderText(t("help.search.placeholder"))
             self.search_next_button.setText(t("help.search.next"))
             self.search_close_button.setText(t("help.search.close"))
+            self.search_label.setStyleSheet("font-size: 14px; font-weight: 600; color: #334155;")
+            self.search_edit.setStyleSheet("min-height: 36px; font-size: 14px; padding: 0 10px;")
+            self.search_next_button.setStyleSheet("min-height: 36px; font-size: 14px; padding: 0 14px;")
+            self.search_close_button.setStyleSheet("min-height: 36px; font-size: 14px; padding: 0 14px;")
+            self.search_status_label.setStyleSheet("font-size: 13px; color: #64748b;")
             self.search_status_label.setText("")
             self.browser.setHtml(self._build_help_html())
             self.sections_list.clear()
@@ -131,15 +136,15 @@ try:
             t = self.translator.text
             return f"""
             <html>
-              <body style="font-family: Segoe UI, Arial, sans-serif; line-height: 1.55; color: #0f172a;">
+              <body style="font-family: Segoe UI, Arial, sans-serif; font-size: 15px; line-height: 1.65; color: #0f172a;">
                 <a name="overview"></a>
                 <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:16px 18px; margin-bottom:18px;">
-                  <h2 style="margin:0 0 8px 0;">{t("help.nav.overview")}</h2>
+                  <h2 style="font-size:24px; margin:0 0 8px 0;">{t("help.nav.overview")}</h2>
                   <p style="margin:0;">{t("help.overview")}</p>
                 </div>
 
                 <a name="setup"></a>
-                <h2 style="font-size:20px; margin:18px 0 8px 0;">{t("help.section.setup")}</h2>
+                <h2 style="font-size:24px; margin:18px 0 8px 0;">{t("help.section.setup")}</h2>
                 <ul>
                   <li><b>{t("source.folder")}:</b> {t("help.desc.source_folder")}</li>
                   <li><b>{t("source.preset")}:</b> {t("help.desc.preset")}</li>
@@ -151,7 +156,7 @@ try:
                 </ul>
 
                 <a name="processing"></a>
-                <h2 style="font-size:20px; margin:18px 0 8px 0;">{t("help.section.processing")}</h2>
+                <h2 style="font-size:24px; margin:18px 0 8px 0;">{t("help.section.processing")}</h2>
                 <ul>
                   <li><b>{t("processing.units")}:</b> {t("help.desc.units")}</li>
                   <li><b>{t("processing.width")}:</b> {t("help.desc.width")}</li>
@@ -162,7 +167,7 @@ try:
                 </ul>
 
                 <a name="actions"></a>
-                <h2 style="font-size:20px; margin:18px 0 8px 0;">{t("help.section.actions")}</h2>
+                <h2 style="font-size:24px; margin:18px 0 8px 0;">{t("help.section.actions")}</h2>
                 <ul>
                   <li><b>{t("actions.preview")}:</b> {t("help.desc.preview")}</li>
                   <li><b>{t("actions.start")}:</b> {t("help.desc.start")}</li>
@@ -172,7 +177,7 @@ try:
                 </ul>
 
                 <a name="report"></a>
-                <h2 style="font-size:20px; margin:18px 0 8px 0;">{t("help.section.report")}</h2>
+                <h2 style="font-size:24px; margin:18px 0 8px 0;">{t("help.section.report")}</h2>
                 <ul>
                   <li><b>{t("report.summary")}:</b> {t("help.desc.report_summary")}</li>
                   <li><b>{t("report.warnings")}:</b> {t("help.desc.report_warnings")}</li>

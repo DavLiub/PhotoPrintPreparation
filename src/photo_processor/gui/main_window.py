@@ -8,6 +8,7 @@ from photo_processor.app.i18n.translator import Translator
 from photo_processor.config.presets import PRESETS
 from photo_processor.core.output_policy import ConflictStrategy
 from photo_processor.core.settings import ProcessingSettings, ResizeMode, Units
+from photo_processor.gui.dialogs.about_dialog import AboutDialog
 from photo_processor.gui.dialogs.help_dialog import HelpDialog
 from photo_processor.gui.processing_worker import ProcessingWorker
 from photo_processor.gui.tabs.processing_tab import ProcessingTab
@@ -48,6 +49,7 @@ try:
             self.processing_worker: ProcessingWorker | None = None
             self.processing_dry_run = False
             self.help_dialog: HelpDialog | None = None
+            self.about_dialog: AboutDialog | None = None
             self._setup_ui()
             self._load_saved_snapshot()
             self._retranslate()
@@ -404,7 +406,12 @@ try:
             self.help_dialog.activateWindow()
 
         def _show_about(self) -> None:
-            QMessageBox.information(self, self.translator.text("menu.help.about"), self.translator.text("about.text"))
+            if self.about_dialog is None:
+                self.about_dialog = AboutDialog(self.translator, self)
+            self.about_dialog.retranslate()
+            self.about_dialog.show()
+            self.about_dialog.raise_()
+            self.about_dialog.activateWindow()
 
         def _retranslate(self) -> None:
             t = self.translator.text
