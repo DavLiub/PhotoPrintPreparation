@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import argparse
-from pathlib import Path
 
+from photo_processor.api.settings_factory import build_settings_from_args
 from photo_processor.app.use_cases.batch_processing import BatchProcessingUseCase
-from photo_processor.core.settings import ProcessingSettings, ResizeMode, Units
+from photo_processor.config.presets import get_preset_ids
+from photo_processor.core.output_policy import ConflictStrategy
+from photo_processor.core.settings import ResizeMode, Units
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -14,38 +16,29 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--source", required=True, help="Source folder with images")
     parser.add_argument("--output", help="Output folder, defaults to <source>/processed")
-    parser.add_argument("--width", type=float, default=1500)
-    parser.add_argument("--height", type=float, default=1000)
-    parser.add_argument("--units", choices=[unit.value for unit in Units], default=Units.PIXELS.value)
-    parser.add_argument("--dpi", type=int, default=300)
+    parser.add_argument("--preset", choices=get_preset_ids())
+    parser.add_argument("--width", type=float)
+    parser.add_argument("--height", type=float)
+    parser.add_argument("--units", choices=[unit.value for unit in Units])
+    parser.add_argument("--dpi", type=int)
     parser.add_argument(
         "--resize-mode",
         choices=[mode.value for mode in ResizeMode],
-        default=ResizeMode.CONTAIN.value,
     )
-    parser.add_argument("--max-file-size-mb", type=float, default=2.0)
+    parser.add_argument("--max-file-size-mb", type=float)
     parser.add_argument("--suffix", default="_processed")
+    parser.add_argument(
+        "--conflict-strategy",
+        choices=[strategy.value for strategy in ConflictStrategy],
+        default=ConflictStrategy.ADD_COUNTER.value,
+    )
     parser.add_argument("--dry-run", action="store_true")
     return parser
 
 
 def run_cli() -> int:
     args = build_parser().parse_args()
-    source_folder = Path(args.source).expanduser().resolve()
-    output_folder = Path(args.output).expanduser().resolve() if args.output else source_folder / "processed"
-
-    settings = ProcessingSettings(
-        source_folder=source_folder,
-        output_folder=output_folder,
-        width=args.width,
-        height=args.height,
-        units=Units(args.units),
-        dpi=args.dpi,
-        resize_mode=ResizeMode(args.resize_mode),
-        max_file_size_mb=args.max_file_size_mb,
-        filename_suffix=args.suffix,
-    )
-
+    settings = build_settings_from_args(args)
     result = BatchProcessingUseCase(settings).run(dry_run=args.dry_run)
     print(f"Found files: {result.found_files}")
     print(f"Processed: {result.processed_files}")

@@ -53,7 +53,7 @@ Defined in `src/photo_processor/core/single_image_result.py`.
 Purpose:
 
 - describe one processed file or one failed file
-- carry warnings, output metadata, and future GUI-facing details
+- carry status, warnings, output metadata, and future GUI-facing details
 
 ### ImageInfo
 
@@ -63,6 +63,25 @@ Purpose:
 
 - describe image width, height, mode, and format
 - normalize source and output metadata into one reusable structure
+
+### OutputPolicy
+
+Defined in `src/photo_processor/core/output_policy.py`.
+
+Purpose:
+
+- define output filename suffix
+- define output format
+- define conflict handling strategy for existing target files
+
+### ProcessingPreset
+
+Defined in `src/photo_processor/core/preset.py`.
+
+Purpose:
+
+- describe a user-facing processing scenario
+- bundle size, units, DPI, resize mode, and file-size defaults into one reusable preset
 
 ## Intended evolution
 
@@ -75,5 +94,4 @@ The current core model set is acceptable for a small prototype, but the target a
 ## Recommended next model additions
 
 - `FrameSize` value object with unit-aware conversion
-- `OutputPolicy` for suffix, format, and overwrite behavior
 - `ProcessingReport` for batch-level summary plus per-file details

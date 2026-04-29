@@ -3,7 +3,7 @@ from __future__ import annotations
 from photo_processor.core.image_info import ImageInfo
 from photo_processor.core.image_task import ImageTask
 from photo_processor.core.settings import ProcessingSettings
-from photo_processor.core.single_image_result import SingleImageResult
+from photo_processor.core.single_image_result import ImageProcessStatus, SingleImageResult
 from photo_processor.infra.imaging.image_loader import load_image
 from photo_processor.infra.imaging.jpeg_optimizer import save_jpeg_with_limit
 from photo_processor.infra.imaging.pillow_transformer import render_to_frame
@@ -43,7 +43,7 @@ class ImageProcessor:
         return SingleImageResult(
             source_path=task.source_path,
             output_path=task.output_path,
-            success=True,
+            status=ImageProcessStatus.SUCCESS,
             warnings=warnings,
             source_info=source_info,
             target_size=(target_width, target_height),
@@ -51,7 +51,7 @@ class ImageProcessor:
                 width=save_result.output_size[0],
                 height=save_result.output_size[1],
                 mode="RGB",
-                image_format="JPEG",
+                image_format=self.settings.output_policy.output_format.value.upper(),
             ),
             output_file_size_bytes=save_result.file_size_bytes,
             output_quality=save_result.quality,

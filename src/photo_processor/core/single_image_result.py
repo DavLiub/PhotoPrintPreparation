@@ -1,16 +1,23 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from enum import Enum
 from pathlib import Path
 
 from photo_processor.core.image_info import ImageInfo
+
+
+class ImageProcessStatus(str, Enum):
+    SUCCESS = "success"
+    SKIPPED = "skipped"
+    ERROR = "error"
 
 
 @dataclass(slots=True)
 class SingleImageResult:
     source_path: Path
     output_path: Path
-    success: bool
+    status: ImageProcessStatus
     warnings: list[str] = field(default_factory=list)
     error_message: str | None = None
     source_info: ImageInfo | None = None
@@ -20,9 +27,15 @@ class SingleImageResult:
     output_quality: int | None = None
     was_dimension_reduced: bool = False
 
+    @property
+    def success(self) -> bool:
+        return self.status is ImageProcessStatus.SUCCESS
+
     def summary_message(self) -> str:
-        if not self.success and self.error_message:
+        if self.status is ImageProcessStatus.ERROR and self.error_message:
             return f"ERROR {self.source_path}: {self.error_message}"
+        if self.status is ImageProcessStatus.SKIPPED:
+            return f"SKIP {self.source_path} -> {self.output_path}"
 
         details: list[str] = []
         if self.output_info is not None:

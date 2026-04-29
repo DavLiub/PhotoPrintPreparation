@@ -14,6 +14,7 @@ Version `0.1` focuses on the non-UI foundation:
 - output path generation
 - one-image Pillow processing pipeline
 - batch report structure
+- preset-based processing scenarios
 
 GUI, preview, richer reporting, and settings persistence are the next stages.
 
@@ -26,6 +27,7 @@ pip install -r requirements.txt
 $env:PYTHONPATH = "src"
 python -m unittest discover -s tests -v
 python -m photo_processor --source "C:\Photos" --output "C:\Photos\processed"
+python -m photo_processor --source "C:\Photos" --preset print_10x15
 ```
 
 ## Layout

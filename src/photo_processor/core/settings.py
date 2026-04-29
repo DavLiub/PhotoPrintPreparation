@@ -9,9 +9,9 @@ from photo_processor.config.defaults import (
     DEFAULT_FILENAME_SUFFIX,
     DEFAULT_HEIGHT,
     DEFAULT_MAX_FILE_SIZE_MB,
-    DEFAULT_OUTPUT_FORMAT,
     DEFAULT_WIDTH,
 )
+from photo_processor.core.output_policy import OutputFormat, OutputPolicy
 
 
 class Units(str, Enum):
@@ -42,9 +42,13 @@ class ProcessingSettings:
     auto_rotate: bool = True
     max_file_size_mb: float = DEFAULT_MAX_FILE_SIZE_MB
     keep_aspect_ratio: bool = True
-    filename_suffix: str = DEFAULT_FILENAME_SUFFIX
-    output_format: str = DEFAULT_OUTPUT_FORMAT
     source_formats: tuple[str, ...] = field(default_factory=lambda: SUPPORTED_INPUT_FORMATS)
+    output_policy: OutputPolicy = field(
+        default_factory=lambda: OutputPolicy(
+            filename_suffix=DEFAULT_FILENAME_SUFFIX,
+            output_format=OutputFormat.JPEG,
+        )
+    )
 
     def target_size_px(self) -> tuple[int, int]:
         if self.units == Units.PIXELS:

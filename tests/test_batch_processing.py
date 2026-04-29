@@ -6,8 +6,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from photo_processor.app.use_cases.batch_processing import BatchProcessingUseCase
+from photo_processor.core.output_policy import ConflictStrategy, OutputFormat, OutputPolicy
 from photo_processor.core.settings import ProcessingSettings
-from photo_processor.core.single_image_result import SingleImageResult
+from photo_processor.core.single_image_result import ImageProcessStatus, SingleImageResult
 
 
 class BatchProcessingTestCase(unittest.TestCase):
@@ -42,7 +43,40 @@ class BatchProcessingTestCase(unittest.TestCase):
         self.assertEqual(result.error_files, 1)
         self.assertEqual(len(result.items), 1)
         self.assertFalse(result.items[0].success)
+        self.assertEqual(result.items[0].status, ImageProcessStatus.ERROR)
         self.assertIn("does not exist", result.items[0].error_message or "")
+
+    def test_skip_strategy_marks_existing_target_as_skipped(self) -> None:
+        source_dir = Path(self._testMethodName)
+        output_dir = source_dir / "out"
+        source_dir.mkdir(exist_ok=True)
+        output_dir.mkdir(exist_ok=True)
+        self.addCleanup(_cleanup_tree, source_dir)
+
+        source = source_dir / "a.jpg"
+        source.write_bytes(b"jpg")
+        existing_output = output_dir / "a_processed.jpg"
+        existing_output.write_bytes(b"existing")
+
+        settings = ProcessingSettings(
+            source_folder=source_dir,
+            output_folder=output_dir,
+            output_policy=OutputPolicy(
+                filename_suffix="_processed",
+                output_format=OutputFormat.JPEG,
+                conflict_strategy=ConflictStrategy.SKIP,
+            ),
+        )
+
+        result = BatchProcessingUseCase(settings).run(dry_run=False)
+
+        self.assertEqual(result.found_files, 1)
+        self.assertEqual(result.skipped_files, 1)
+        self.assertEqual(result.processed_files, 0)
+        self.assertEqual(result.error_files, 0)
+        self.assertEqual(len(result.items), 1)
+        self.assertEqual(result.items[0].status, ImageProcessStatus.SKIPPED)
+        self.assertTrue(any("Skipped because" in warning for warning in result.items[0].warnings))
 
     def test_batch_continues_after_one_file_failure(self) -> None:
         source_dir = Path(self._testMethodName)
@@ -64,7 +98,7 @@ class BatchProcessingTestCase(unittest.TestCase):
             return SingleImageResult(
                 source_path=task.source_path,
                 output_path=task.output_path,
-                success=True,
+                status=ImageProcessStatus.SUCCESS,
             )
 
         with patch("photo_processor.app.use_cases.batch_processing.ImageProcessor.process", side_effect=fake_process):
