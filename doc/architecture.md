@@ -35,8 +35,11 @@ Inside `src/photo_processor/`, use the following responsibilities:
 - `main.py` is now only a thin compatibility entry point
 - `bootstrap/main.py` is the startup boundary
 - `api/cli.py` owns command-line parsing and user-facing console flow
+- `gui/` owns the desktop presentation layer and tab widgets
 - `core/` now acts as the canonical pure-logic layer
 - `app/use_cases/batch_processing.py` holds orchestration and application flow
+- `app/controllers/` coordinates GUI-facing persistence actions
+- `app/i18n/` owns lightweight translation behavior
 - `infra/filesystem/` owns file scanning and output path generation
 - `infra/imaging/image_processor.py` is the future adapter boundary for Pillow-backed processing
 

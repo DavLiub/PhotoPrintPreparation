@@ -12,10 +12,15 @@ The current repository implements the first technical slice of the product:
 - source scanning and output naming in `src/photo_processor/infra/filesystem/`
 - one-image processing in `src/photo_processor/infra/imaging/`
 - batch orchestration and result aggregation in `src/photo_processor/app/use_cases/batch_processing.py`
+- user-facing report building in `src/photo_processor/app/reporting/report_builder.py`
 - per-file structured results in `src/photo_processor/core/single_image_result.py`
+- presentation summary model in `src/photo_processor/core/processing_report.py`
 - image metadata normalization in `src/photo_processor/core/image_info.py`
 - output behavior modeling in `src/photo_processor/core/output_policy.py`
 - preset registry and preset-aware CLI settings resolution in `src/photo_processor/config/presets.py` and `src/photo_processor/api/settings_factory.py`
+- JSON settings persistence in `src/photo_processor/infra/settings_storage/json_settings_storage.py`
+- desktop GUI scaffold in `src/photo_processor/gui/` and `src/photo_processor/api/gui_app.py`
+- English-first translation layer in `src/photo_processor/app/i18n/` and `src/photo_processor/config/translations.py`
 - quality warnings for source images smaller than the target frame
 - unit and integration tests for math, paths, planning, and one-image processing in `tests/`
 
@@ -23,7 +28,7 @@ The current repository implements the first technical slice of the product:
 
 The code still has planned gaps:
 
-- GUI, preview, settings persistence, and packaging are not implemented yet
+- live GUI processing workflow, preview, and packaging are not implemented yet
 - advanced output policies beyond current strategies are not implemented yet
 
 ## Convergence with product specification

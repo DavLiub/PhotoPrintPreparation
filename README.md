@@ -15,8 +15,9 @@ Version `0.1` focuses on the non-UI foundation:
 - one-image Pillow processing pipeline
 - batch report structure
 - preset-based processing scenarios
+- desktop GUI scaffold with English-first localization support
 
-GUI, preview, richer reporting, and settings persistence are the next stages.
+Preview and richer live processing behavior are the next stages.
 
 ## Quick start
 
@@ -28,13 +29,17 @@ $env:PYTHONPATH = "src"
 python -m unittest discover -s tests -v
 python -m photo_processor --source "C:\Photos" --output "C:\Photos\processed"
 python -m photo_processor --source "C:\Photos" --preset print_10x15
+python -m photo_processor.api.gui_app
 ```
+
+The CLI now persists last-used settings in `config/settings.json`.
 
 ## Layout
 
 - `src/` source container for the Python project
 - `src/photo_processor/` root application package
-- `src/photo_processor/api`, `app`, `core`, `infra`, `bootstrap`, `config` application layers
+- `src/photo_processor/api`, `app`, `core`, `infra`, `bootstrap`, `config`, `gui` application packages
 - `tests/` unit tests for core rules
 - `build.bat` local install and test helper
 - `run.bat` local CLI launcher
+- `run_gui.bat` local GUI launcher

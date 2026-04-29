@@ -8,10 +8,11 @@ version = "0.1.0"
 description = "Batch photo preparation core for print and report workflows"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = ["Pillow>=10.0"]
+dependencies = ["Pillow>=10.0", "PySide6>=6.7"]
 
 [project.scripts]
 photo-processor = "photo_processor.main:main"
+photo-processor-gui = "photo_processor.api.gui_app:run_gui"
 
 [tool.setuptools.packages.find]
 where = ["src"]

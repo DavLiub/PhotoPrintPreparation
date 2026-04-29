@@ -46,6 +46,15 @@ Purpose:
 - keep per-file processing items
 - expose human-readable log messages for CLI and later GUI
 
+### ProcessingReport
+
+Defined in `src/photo_processor/core/processing_report.py`.
+
+Purpose:
+
+- expose a user-facing summary of batch processing
+- separate presentation-oriented totals from lower-level item storage
+
 ### SingleImageResult
 
 Defined in `src/photo_processor/core/single_image_result.py`.
@@ -83,6 +92,15 @@ Purpose:
 - describe a user-facing processing scenario
 - bundle size, units, DPI, resize mode, and file-size defaults into one reusable preset
 
+### SettingsSnapshot
+
+Defined in `src/photo_processor/core/settings_snapshot.py`.
+
+Purpose:
+
+- serialize last-used runtime settings
+- provide a stable persistence model for CLI now and GUI later
+
 ## Intended evolution
 
 The current core model set is acceptable for a small prototype, but the target architecture should separate:
@@ -94,4 +112,3 @@ The current core model set is acceptable for a small prototype, but the target a
 ## Recommended next model additions
 
 - `FrameSize` value object with unit-aware conversion
-- `ProcessingReport` for batch-level summary plus per-file details

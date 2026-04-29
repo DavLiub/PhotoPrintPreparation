@@ -1,0 +1,2 @@
+"""Settings storage adapters."""
+

@@ -23,3 +23,7 @@ class BatchProcessingResult:
             self.skipped_files += 1
         else:
             self.error_files += 1
+
+    @property
+    def warning_count(self) -> int:
+        return sum(len(item.warnings) for item in self.items)

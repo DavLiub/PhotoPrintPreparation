@@ -107,6 +107,7 @@ class BatchProcessingTestCase(unittest.TestCase):
         self.assertEqual(result.found_files, 2)
         self.assertEqual(result.processed_files, 1)
         self.assertEqual(result.error_files, 1)
+        self.assertEqual(result.warning_count, 0)
         self.assertEqual(len(result.items), 2)
         self.assertTrue(any(item.success for item in result.items))
         self.assertTrue(any((item.error_message or "") == "broken file" for item in result.items))

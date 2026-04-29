@@ -1,0 +1,2 @@
+"""Main GUI tab widgets."""
+
