@@ -22,6 +22,9 @@ try:
         def set_report_text(self, text: str) -> None:
             self.report_placeholder.setPlainText(text)
 
+        def clear_report(self) -> None:
+            self.report_placeholder.clear()
+
 except ImportError:  # pragma: no cover - depends on environment
     class ReportTab:  # type: ignore[no-redef]
         def __init__(self, *_args, **_kwargs) -> None:

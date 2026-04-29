@@ -59,6 +59,7 @@ try:
             self.processing_worker: ProcessingWorker | None = None
             self.processing_dry_run = False
             self.current_run_settings: ProcessingSettings | None = None
+            self.source_count_enabled = False
             self.source_count_timer = QTimer(self)
             self.source_count_timer.setSingleShot(True)
             self.source_count_timer.setInterval(250)
@@ -75,6 +76,7 @@ try:
             self._build_menu()
             self._build_central_widget()
             self.setStatusBar(QStatusBar(self))
+            self.report_tab.clear_report()
 
         def _build_menu(self) -> None:
             menu_bar = QMenuBar(self)
@@ -126,8 +128,10 @@ try:
             self.progress_count_label = QLabel(root)
             self.setup_tab.source_browse_button.clicked.connect(self._choose_source_folder)
             self.setup_tab.output_browse_button.clicked.connect(self._choose_output_folder)
+            self.setup_tab.source_path_edit.textEdited.connect(self._enable_source_count_refresh)
             self.setup_tab.source_path_edit.textChanged.connect(self._schedule_source_file_count_refresh)
             for checkbox in self.setup_tab.format_checkboxes.values():
+                checkbox.toggled.connect(self._enable_source_count_refresh)
                 checkbox.toggled.connect(self._schedule_source_file_count_refresh)
             self.preview_button.clicked.connect(self._preview_processing)
             self.start_button.clicked.connect(self._start_processing)
@@ -218,7 +222,7 @@ try:
             self._set_combo_data(self.setup_tab.conflict_combo, snapshot.conflict_strategy or ConflictStrategy.ADD_COUNTER.value)
             if snapshot.preset_id:
                 self._set_combo_data(self.setup_tab.preset_combo, snapshot.preset_id)
-            self._schedule_source_file_count_refresh()
+            self._reset_session_views(enable_source_count=bool(snapshot.source_folder))
 
         def _apply_defaults(self) -> None:
             self.processing_tab.width_spin.setValue(1500)
@@ -231,7 +235,7 @@ try:
             self._set_combo_data(self.processing_tab.units_combo, Units.PIXELS.value)
             self._set_combo_data(self.processing_tab.resize_mode_combo, ResizeMode.CONTAIN.value)
             self._set_combo_data(self.setup_tab.conflict_combo, ConflictStrategy.ADD_COUNTER.value)
-            self._schedule_source_file_count_refresh()
+            self._reset_session_views(enable_source_count=False)
 
         def _set_combo_data(self, combo, value: str | None) -> None:
             for index in range(combo.count()):
@@ -267,6 +271,7 @@ try:
                 self.setup_tab.source_path_edit.text() or str(Path.cwd()),
             )
             if folder:
+                self.source_count_enabled = True
                 self.setup_tab.source_path_edit.setText(folder)
 
         def _choose_output_folder(self) -> None:
@@ -440,12 +445,15 @@ try:
             self.progress_count_label.setText(f"({current}/{safe_total})")
 
         def _schedule_source_file_count_refresh(self) -> None:
-            if self.processing_thread is not None:
+            if self.processing_thread is not None or not self.source_count_enabled:
                 return
             self.source_count_timer.start()
 
+        def _enable_source_count_refresh(self, *_args) -> None:
+            self.source_count_enabled = True
+
         def _refresh_source_file_count(self) -> None:
-            if self.processing_thread is not None:
+            if self.processing_thread is not None or not self.source_count_enabled:
                 return
             source_text = self.setup_tab.source_path_edit.text().strip()
             if not source_text:
@@ -454,6 +462,15 @@ try:
             source_folder = Path(source_text).expanduser()
             total = len(scan_supported_images(source_folder, self.setup_tab.selected_source_formats()))
             self._update_progress(0, total)
+
+        def _reset_session_views(self, enable_source_count: bool) -> None:
+            self.source_count_timer.stop()
+            self.source_count_enabled = enable_source_count
+            self.report_tab.clear_report()
+            if enable_source_count:
+                self._refresh_source_file_count()
+            else:
+                self._update_progress(0, 0)
 
         def closeEvent(self, event: QCloseEvent) -> None:
             if self.processing_thread is not None:
