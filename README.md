@@ -17,7 +17,7 @@ Version `0.1` focuses on the non-UI foundation:
 - preset-based processing scenarios
 - desktop GUI with `en/ru/he` localization support
 
-Preview and richer live processing behavior are still incomplete, but the GUI now supports folder selection, dry-run preview, full batch start, and report display.
+Preview and richer live processing behavior are still incomplete, but the GUI now supports folder selection, full batch start, and report display.
 
 ## Quick start
 
@@ -41,7 +41,7 @@ The current GUI is organized around three tabs:
 - `Processing` for resize and output constraints
 - `Report` for user-facing processing summary
 
-The GUI can now browse folders, save current settings, run dry-run preview, run full processing, and open the output folder.
+The GUI can now browse folders, save current settings, run full processing, and open the output folder.
 It also includes a searchable Help dialog with parameter descriptions and external reference links such as DPI on Wikipedia.
 The `About` dialog now shows the product name, version, license model, and copyright.
 

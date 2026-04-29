@@ -22,7 +22,7 @@ The current repository implements the first technical slice of the product:
 - desktop GUI scaffold in `src/photo_processor/gui/` and `src/photo_processor/api/gui_app.py`
 - combined `Setup` tab for source/output configuration, simplified menu, and stronger action-button styling
 - input-format filtering and output-extension selection in the GUI settings model
-- real GUI actions for folder browsing, dry-run preview, full batch start, output-folder opening, and report rendering
+- real GUI actions for folder browsing, full batch start, output-folder opening, and report rendering
 - searchable GUI Help dialog with parameter descriptions and external reference links
 - translation layer in `src/photo_processor/app/i18n/` and `src/photo_processor/config/translations.py` with `en`, `ru`, and `he`
 - quality warnings for source images smaller than the target frame
@@ -32,7 +32,7 @@ The current repository implements the first technical slice of the product:
 
 The code still has planned gaps:
 
-- GUI packaging and richer preview beyond the current dry-run report are not implemented yet
+- GUI packaging and richer pre-processing preview are not implemented yet
 - advanced output policies beyond current strategies are not implemented yet
 
 ## Convergence with product specification

@@ -117,8 +117,6 @@ try:
             self.tabs.addTab(self.processing_tab, "")
             self.tabs.addTab(self.report_tab, "")
 
-            actions_row = QHBoxLayout()
-            self.preview_button = QPushButton(root)
             self.start_button = QPushButton(root)
             self.open_output_button = QPushButton(root)
             self.save_settings_button = QPushButton(root)
@@ -133,24 +131,20 @@ try:
             for checkbox in self.setup_tab.format_checkboxes.values():
                 checkbox.toggled.connect(self._enable_source_count_refresh)
                 checkbox.toggled.connect(self._schedule_source_file_count_refresh)
-            self.preview_button.clicked.connect(self._preview_processing)
             self.start_button.clicked.connect(self._start_processing)
             self.open_output_button.clicked.connect(self._open_output_folder)
             self.save_settings_button.clicked.connect(self._save_settings)
             self._style_action_buttons()
-            actions_row.addWidget(self.preview_button)
+            actions_row = QHBoxLayout()
+            actions_row.addWidget(self.start_button)
+            actions_row.addWidget(self.progress_bar, 1)
+            actions_row.addWidget(self.progress_count_label)
+            actions_row.addSpacing(12)
             actions_row.addWidget(self.open_output_button)
-            actions_row.addStretch(1)
             actions_row.addWidget(self.save_settings_button)
-
-            run_row = QHBoxLayout()
-            run_row.addWidget(self.start_button)
-            run_row.addWidget(self.progress_bar, 1)
-            run_row.addWidget(self.progress_count_label)
 
             layout.addWidget(self.tabs)
             layout.addLayout(actions_row)
-            layout.addLayout(run_row)
             self.setCentralWidget(root)
             self._update_progress(0, 0)
 
@@ -175,7 +169,6 @@ try:
                 + "QPushButton { background-color: #2563eb; color: #ffffff; border: none; } "
                 + "QPushButton:hover { background-color: #1d4ed8; }"
             )
-            self.preview_button.setStyleSheet(neutral_style)
             self.open_output_button.setStyleSheet(neutral_style)
             self.save_settings_button.setStyleSheet(neutral_style)
             self.start_button.setStyleSheet(primary_style)
@@ -282,9 +275,6 @@ try:
             )
             if folder:
                 self.setup_tab.output_path_edit.setText(folder)
-
-        def _preview_processing(self) -> None:
-            self._run_processing(dry_run=True)
 
         def _start_processing(self) -> None:
             self._run_processing(dry_run=False)
@@ -426,7 +416,6 @@ try:
             self.current_run_settings = None
 
         def _set_processing_state(self, is_running: bool) -> None:
-            self.preview_button.setEnabled(not is_running)
             self.start_button.setEnabled(not is_running)
             self.open_output_button.setEnabled(not is_running)
             self.save_settings_button.setEnabled(not is_running)
@@ -521,7 +510,6 @@ try:
             self.setup_tab.retranslate(t)
             self.processing_tab.retranslate(t)
             self.report_tab.retranslate(t)
-            self.preview_button.setText(t("actions.preview"))
             self.start_button.setText(t("actions.start"))
             self.open_output_button.setText(t("actions.open_output"))
             self.save_settings_button.setText(t("actions.save_settings"))

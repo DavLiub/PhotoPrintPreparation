@@ -172,7 +172,6 @@ try:
                 <a name="actions"></a>
                 <h2 style="font-size:24px; margin:18px 0 8px 0;">{t("help.section.actions")}</h2>
                 <ul>
-                  <li><b>{t("actions.preview")}:</b> {t("help.desc.preview")}</li>
                   <li><b>{t("actions.start")}:</b> {t("help.desc.start")}</li>
                   <li><b>{t("help.progress")}:</b> {t("help.desc.progress")}</li>
                   <li><b>{t("actions.open_output")}:</b> {t("help.desc.open_output")}</li>
