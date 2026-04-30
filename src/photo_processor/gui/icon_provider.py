@@ -1,11 +1,18 @@
 from __future__ import annotations
 
+import sys
 from functools import lru_cache
 from pathlib import Path
 
 
+def _bundle_root() -> Path:
+    if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+        return Path(sys._MEIPASS)  # type: ignore[attr-defined]
+    return Path(__file__).resolve().parents[2]
+
+
 def _asset_path(name: str) -> Path:
-    return Path(__file__).resolve().parent / "assets" / name
+    return _bundle_root() / "photo_processor" / "gui" / "assets" / name
 
 
 @lru_cache(maxsize=8)

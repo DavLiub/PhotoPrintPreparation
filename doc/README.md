@@ -27,3 +27,8 @@ If `src/` and `source doc/` diverge, document the gap here instead of hiding it.
 - Separate `current state` from `target state`.
 - Prefer concrete paths, module names, and formulas over abstract prose.
 - Update `doc/` whenever `src/` changes in a way that affects architecture or behavior.
+- When the application version changes, update `pyproject.toml` and `src/photo_processor/config/app_info.py` in the same change.
+- Treat version bumps as:
+  - patch for fixes and packaging corrections
+  - minor for new user-visible functionality
+  - major for breaking changes in workflow or compatibility
