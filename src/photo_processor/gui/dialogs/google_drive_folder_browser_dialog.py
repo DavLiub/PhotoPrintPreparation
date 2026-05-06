@@ -54,7 +54,7 @@ try:
             self.folder_tree.setRootIsDecorated(True)
             self.folder_tree.setAlternatingRowColors(True)
             self.folder_tree.currentItemChanged.connect(lambda *_args: self._refresh_buttons())
-            self.folder_tree.itemExpanded.connect(self._ensure_children_loaded)
+            self.folder_tree.itemExpanded.connect(self._handle_item_expanded)
             self.folder_tree.itemDoubleClicked.connect(self._open_selected_folder)
             self.folder_tree.setStyleSheet(
                 "QTreeWidget { border: 1px solid #e2e8f0; border-radius: 10px; background: #ffffff; }"
@@ -102,14 +102,10 @@ try:
 
         def _reload_tree(self) -> None:
             self.folder_tree.clear()
-            first_item: QTreeWidgetItem | None = None
-            for child_folder in self.uploader.list_folders(self.current_folder.folder_id):
+            for child_folder in self.uploader.list_folders("root"):
                 item = self._build_tree_item(child_folder)
                 self.folder_tree.addTopLevelItem(item)
-                if first_item is None:
-                    first_item = item
-            if first_item is not None:
-                self.folder_tree.setCurrentItem(first_item)
+            self._expand_branch_to_current_folder()
             self._refresh_breadcrumbs()
             self._refresh_empty_state()
             self._refresh_buttons()
@@ -149,7 +145,12 @@ try:
             self.breadcrumbs_row.addStretch(1)
 
         def _refresh_empty_state(self) -> None:
-            self.empty_state_label.setVisible(self.folder_tree.topLevelItemCount() == 0)
+            current_item = self._find_item_by_folder_id(self.current_folder.folder_id)
+            if current_item is None:
+                self.empty_state_label.setVisible(self.folder_tree.topLevelItemCount() == 0)
+                return
+            self._ensure_children_loaded(current_item)
+            self.empty_state_label.setVisible(current_item.childCount() == 0)
 
         def _jump_to_folder(self, folder: GoogleDriveFolder) -> None:
             self.current_folder = folder
@@ -181,6 +182,10 @@ try:
                 item.addChild(self._build_tree_item(child_folder))
             item.setData(0, Qt.UserRole + 1, True)
 
+        def _handle_item_expanded(self, item: QTreeWidgetItem) -> None:
+            self._ensure_children_loaded(item)
+            self._collapse_siblings(item)
+
         def _open_selected_folder(self, item: QTreeWidgetItem | None = None, *_args) -> None:
             current_item = item or self.folder_tree.currentItem()
             if current_item is None:
@@ -190,6 +195,76 @@ try:
                 return
             self.current_folder = folder
             self._reload_tree()
+
+        def _expand_branch_to_current_folder(self) -> None:
+            chain = self.uploader.get_folder_chain(self.current_folder.folder_id)
+            if len(chain) <= 1:
+                first_item = self.folder_tree.topLevelItem(0)
+                if first_item is not None:
+                    self.folder_tree.setCurrentItem(first_item)
+                return
+
+            parent_item: QTreeWidgetItem | None = None
+            target_item: QTreeWidgetItem | None = None
+            for folder in chain[1:]:
+                target_item = self._find_child_item(parent_item, folder.folder_id)
+                if target_item is None:
+                    break
+                self._ensure_children_loaded(target_item)
+                self._collapse_siblings(target_item)
+                target_item.setExpanded(True)
+                parent_item = target_item
+
+            if target_item is not None:
+                self.folder_tree.setCurrentItem(target_item)
+
+        def _find_child_item(self, parent_item: QTreeWidgetItem | None, folder_id: str) -> QTreeWidgetItem | None:
+            if parent_item is None:
+                for index in range(self.folder_tree.topLevelItemCount()):
+                    item = self.folder_tree.topLevelItem(index)
+                    folder = item.data(0, Qt.UserRole)
+                    if isinstance(folder, GoogleDriveFolder) and folder.folder_id == folder_id:
+                        return item
+                return None
+
+            for index in range(parent_item.childCount()):
+                item = parent_item.child(index)
+                folder = item.data(0, Qt.UserRole)
+                if isinstance(folder, GoogleDriveFolder) and folder.folder_id == folder_id:
+                    return item
+            return None
+
+        def _find_item_by_folder_id(self, folder_id: str) -> QTreeWidgetItem | None:
+            for index in range(self.folder_tree.topLevelItemCount()):
+                item = self.folder_tree.topLevelItem(index)
+                found = self._find_item_in_subtree(item, folder_id)
+                if found is not None:
+                    return found
+            return None
+
+        def _find_item_in_subtree(self, item: QTreeWidgetItem, folder_id: str) -> QTreeWidgetItem | None:
+            folder = item.data(0, Qt.UserRole)
+            if isinstance(folder, GoogleDriveFolder) and folder.folder_id == folder_id:
+                return item
+            for index in range(item.childCount()):
+                found = self._find_item_in_subtree(item.child(index), folder_id)
+                if found is not None:
+                    return found
+            return None
+
+        def _collapse_siblings(self, item: QTreeWidgetItem) -> None:
+            parent_item = item.parent()
+            if parent_item is None:
+                for index in range(self.folder_tree.topLevelItemCount()):
+                    sibling = self.folder_tree.topLevelItem(index)
+                    if sibling is not item:
+                        sibling.setExpanded(False)
+                return
+
+            for index in range(parent_item.childCount()):
+                sibling = parent_item.child(index)
+                if sibling is not item:
+                    sibling.setExpanded(False)
 
         def _go_up(self) -> None:
             if self.current_folder.parent_id is None:
