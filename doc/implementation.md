@@ -37,6 +37,99 @@ The code still has planned gaps:
 - GUI packaging and richer pre-processing preview are not implemented yet
 - advanced output policies beyond current strategies are not implemented yet
 
+## Planned post-processing roadmap
+
+The next major extension under discussion is post-processing for cloud export of already processed photos.
+
+This is not implemented yet. The intended direction is:
+
+1. keep local image generation as the primary processing outcome
+2. add a separate post-processing stage after local files are written
+3. upload only successfully generated output files
+4. report upload success and upload failure independently from local processing success
+
+### Target architecture
+
+The cloud export feature should follow the existing layer split:
+
+- `core/` for provider-neutral settings and upload result models
+- `app/` for post-processing orchestration and workflow decisions
+- `infra/` for concrete cloud adapters and credential storage
+- `gui/` and later CLI extensions for user-facing configuration and execution
+
+The upload flow should not be embedded inside `infra/imaging/image_processor.py`.
+Image generation and cloud publication are separate responsibilities and should remain separate modules.
+
+### Planned implementation stages
+
+1. Extend domain models:
+   - add provider-neutral cloud upload settings
+   - add upload status and upload result models
+   - extend per-file processing results with remote upload metadata
+2. Add an application-level post-processing use case:
+   - accept `BatchProcessingResult`
+   - filter successful local outputs
+   - upload those outputs through an uploader port
+   - enrich the final result and report without hiding partial failures
+3. Integrate post-processing into the main controller flow:
+   - run local batch processing first
+   - run upload only when enabled
+   - keep local processing success separate from remote publication success
+4. Add settings persistence for cloud export:
+   - keep normal UI settings in the existing settings snapshot
+   - store secrets and tokens separately from general settings when practical
+5. Add minimal GUI support:
+   - enable or disable cloud upload
+   - choose provider
+   - configure remote folder
+   - test connection or credentials
+6. Extend reporting:
+   - count uploaded files
+   - count upload failures
+   - store remote path, remote file id, or shareable link when available
+
+### Provider order
+
+The planned provider sequence is:
+
+1. `Google Drive`
+2. `Dropbox`
+
+This order matters because `Google Drive` is the first target and should shape the initial uploader contract, but the contract must remain provider-neutral enough that `Dropbox` can be added without changing application-layer workflow.
+
+### Google Drive first-phase scope
+
+The first `Google Drive` slice should stay intentionally narrow:
+
+- upload processed files into a configured target folder
+- use stored credentials or tokens instead of a full in-app OAuth wizard
+- return enough metadata for reporting, such as remote id and link
+- leave local files in place after successful upload
+
+The first phase should not depend on deleting local files, background sync, or advanced folder browsing UX.
+
+### Dropbox follow-up scope
+
+After the common post-processing contract is stable, add a `Dropbox` adapter using the same application-level workflow:
+
+- reuse post-processing orchestration
+- reuse result reporting
+- keep provider-specific API details inside `infra/cloud/`
+
+### Testing plan
+
+The cloud export roadmap requires tests at multiple levels:
+
+- unit tests for the post-processing use case with fake uploaders
+- settings serialization tests for new cloud-related models
+- controller tests for combined local processing and upload flow
+- optional opt-in integration tests for real provider adapters with external credentials
+
+### Current documentation gap
+
+The product specification in `source doc/PhotoProject_expanded.docx` remains the functional source of truth for image processing behavior.
+The cloud export direction described here is currently a repository-level technical roadmap and should be reflected in the source specification when the feature scope is accepted as part of the product behavior.
+
 ## Convergence with product specification
 
 The product specification in `source doc/PhotoProject_expanded.docx` expects:

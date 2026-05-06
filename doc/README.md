@@ -17,7 +17,7 @@ If `src/` and `source doc/` diverge, document the gap here instead of hiding it.
 ## Documents
 
 - `architecture.md` describes current and target package layering.
-- `implementation.md` describes what is implemented now and what remains planned.
+- `implementation.md` describes what is implemented now, what remains planned, and the current roadmap for post-processing cloud export.
 - `math-algorithms.md` explains frame fitting, orientation choice, padding, and crop math.
 - `data-model.md` explains the core data structures and their intended evolution.
 
