@@ -137,6 +137,7 @@ def build_settings_from_args(
                 if upload_remote_folder is not None
                 else snapshot.cloud_remote_folder
             ),
+            remote_folder_display=snapshot.cloud_remote_folder_display,
             create_share_link=(
                 upload_create_share_link
                 if upload_create_share_link is not None
@@ -187,6 +188,7 @@ def build_snapshot_from_settings(settings: ProcessingSettings, preset_id: str | 
         cloud_connection_id=settings.cloud_upload.connection_id,
         cloud_account_email=settings.cloud_upload.account_email,
         cloud_remote_folder=settings.cloud_upload.remote_folder,
+        cloud_remote_folder_display=settings.cloud_upload.remote_folder_display,
         cloud_create_share_link=settings.cloud_upload.create_share_link,
         cloud_delete_local_after_upload=settings.cloud_upload.delete_local_after_upload,
         cloud_overwrite_remote=settings.cloud_upload.overwrite_remote,

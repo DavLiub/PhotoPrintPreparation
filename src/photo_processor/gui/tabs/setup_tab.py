@@ -4,12 +4,11 @@ from photo_processor.config.presets import PRESETS
 from photo_processor.core.cloud_upload import CloudProvider
 from photo_processor.core.output_policy import ConflictStrategy, OutputFormat
 from photo_processor.core.settings import SUPPORTED_INPUT_FORMATS
-from photo_processor.gui.icon_provider import build_icon, dropbox_logo_path, google_drive_logo_path
+from photo_processor.gui.icon_provider import build_icon, google_drive_logo_path
 
 try:
     from PySide6.QtCore import Qt, QSize
     from PySide6.QtWidgets import (
-        QButtonGroup,
         QCheckBox,
         QComboBox,
         QFormLayout,
@@ -96,30 +95,22 @@ try:
             self.cloud_provider_row = QHBoxLayout(self.cloud_provider_widget)
             self.cloud_provider_row.setContentsMargins(0, 0, 0, 0)
             self.cloud_provider_row.setSpacing(12)
-            self.provider_button_group = QButtonGroup(self.cloud_group)
-            self.provider_button_group.setExclusive(True)
             self.google_drive_button = self._build_provider_button(CloudProvider.GOOGLE_DRIVE, google_drive_logo_path())
-            self.dropbox_button = self._build_provider_button(CloudProvider.DROPBOX, dropbox_logo_path())
-            self.provider_button_group.addButton(self.google_drive_button)
-            self.provider_button_group.addButton(self.dropbox_button)
             self.cloud_provider_row.addWidget(self.google_drive_button)
-            self.cloud_provider_row.addWidget(self.dropbox_button)
             self.cloud_provider_row.addStretch(1)
 
             self.cloud_remote_folder_edit = QLineEdit(self.cloud_group)
+            self.cloud_browse_button = QPushButton(self.cloud_group)
+            cloud_folder_widget = QWidget(self.cloud_group)
+            cloud_folder_row = QHBoxLayout(cloud_folder_widget)
+            cloud_folder_row.setContentsMargins(0, 0, 0, 0)
+            cloud_folder_row.setSpacing(8)
+            cloud_folder_row.addWidget(self.cloud_remote_folder_edit)
+            cloud_folder_row.addWidget(self.cloud_browse_button)
             self.cloud_status_badge = QLabel(self.cloud_group)
             self.cloud_status_badge.setMinimumWidth(120)
             self.cloud_status_badge.setAlignment(self.cloud_status_badge.alignment())
             self.cloud_account_value = QLabel(self.cloud_group)
-            self.cloud_connect_button = QPushButton(self.cloud_group)
-            self.cloud_disconnect_button = QPushButton(self.cloud_group)
-            cloud_actions_widget = QWidget(self.cloud_group)
-            cloud_actions_row = QHBoxLayout(cloud_actions_widget)
-            cloud_actions_row.setContentsMargins(0, 0, 0, 0)
-            cloud_actions_row.setSpacing(10)
-            cloud_actions_row.addWidget(self.cloud_connect_button)
-            cloud_actions_row.addWidget(self.cloud_disconnect_button)
-            cloud_actions_row.addStretch(1)
 
             self.cloud_enabled_label = QLabel(self.cloud_group)
             self.cloud_provider_label = QLabel(self.cloud_group)
@@ -130,15 +121,14 @@ try:
             cloud_form.addRow(self.cloud_provider_label, self.cloud_provider_widget)
             cloud_form.addRow(self.cloud_status_label, self.cloud_status_badge)
             cloud_form.addRow(self.cloud_account_label, self.cloud_account_value)
-            cloud_form.addRow(self.cloud_remote_folder_label, self.cloud_remote_folder_edit)
-            cloud_form.addRow(QWidget(self.cloud_group), cloud_actions_widget)
+            cloud_form.addRow(self.cloud_remote_folder_label, cloud_folder_widget)
 
             layout.addWidget(self.source_group)
             layout.addWidget(self.output_group)
             layout.addWidget(self.cloud_group)
             layout.addStretch(1)
 
-            self.set_cloud_provider(CloudProvider.GOOGLE_DRIVE.value)
+            self.google_drive_button.setChecked(False)
             self._apply_cloud_styles()
 
         def _build_provider_button(self, provider: CloudProvider, icon_path: str) -> QToolButton:
@@ -182,7 +172,6 @@ try:
             }
             """
             self.google_drive_button.setStyleSheet(provider_style)
-            self.dropbox_button.setStyleSheet(provider_style)
             self.cloud_status_badge.setStyleSheet(badge_style)
 
         def retranslate(self, t) -> None:
@@ -209,10 +198,8 @@ try:
             self.cloud_status_label.setText(t("cloud.connection_status"))
             self.cloud_account_label.setText(t("cloud.account"))
             self.cloud_remote_folder_label.setText(t("cloud.remote_folder"))
-            self.cloud_connect_button.setText(t("cloud.connect"))
-            self.cloud_disconnect_button.setText(t("cloud.disconnect"))
+            self.cloud_browse_button.setText(t("cloud.browse"))
             self.google_drive_button.setText(t("cloud.provider.google_drive"))
-            self.dropbox_button.setText(t("cloud.provider.dropbox"))
             self.update_connection_status(bool(self.cloud_account_value.property("account_email")), t)
             if not self.cloud_account_value.property("account_email"):
                 self.cloud_account_value.setText(t("cloud.status.not_connected"))
@@ -252,17 +239,29 @@ try:
                     self.output_format_combo.setCurrentIndex(index)
                     break
 
+        def selected_cloud_remote_folder_id(self) -> str | None:
+            folder_id = self.cloud_remote_folder_edit.property("folder_id")
+            if folder_id:
+                return str(folder_id)
+            text = self.cloud_remote_folder_edit.text().strip()
+            return text or None
+
+        def selected_cloud_remote_folder_display(self) -> str | None:
+            text = self.cloud_remote_folder_edit.text().strip()
+            return text or None
+
+        def set_cloud_remote_folder(self, folder_id: str | None, display_text: str | None = None) -> None:
+            self.cloud_remote_folder_edit.setProperty("folder_id", folder_id)
+            self.cloud_remote_folder_edit.setText(display_text or folder_id or "")
+
         def selected_cloud_provider(self) -> CloudProvider | None:
             if self.google_drive_button.isChecked():
                 return CloudProvider.GOOGLE_DRIVE
-            if self.dropbox_button.isChecked():
-                return CloudProvider.DROPBOX
             return None
 
         def set_cloud_provider(self, provider: str | None) -> None:
             target = provider or CloudProvider.GOOGLE_DRIVE.value
             self.google_drive_button.setChecked(target == CloudProvider.GOOGLE_DRIVE.value)
-            self.dropbox_button.setChecked(target == CloudProvider.DROPBOX.value)
 
         def set_cloud_account_text(self, text: str) -> None:
             self.cloud_account_value.setText(text)

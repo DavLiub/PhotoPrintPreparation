@@ -25,6 +25,7 @@ class SettingsSnapshot:
     cloud_connection_id: str | None = None
     cloud_account_email: str | None = None
     cloud_remote_folder: str | None = None
+    cloud_remote_folder_display: str | None = None
     cloud_create_share_link: bool | None = None
     cloud_delete_local_after_upload: bool | None = None
     cloud_overwrite_remote: bool | None = None

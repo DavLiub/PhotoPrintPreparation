@@ -14,6 +14,7 @@ from photo_processor.core.image_task import ImageTask
 from photo_processor.core.output_policy import ConflictStrategy
 from photo_processor.core.settings import CropAnchor, ProcessingSettings, ResizeMode, Units
 from photo_processor.gui.dialogs.about_dialog import AboutDialog
+from photo_processor.gui.dialogs.google_drive_folder_browser_dialog import GoogleDriveFolderBrowserDialog
 from photo_processor.gui.dialogs.help_dialog import HelpDialog
 from photo_processor.gui.google_drive_connect_worker import GoogleDriveConnectWorker
 from photo_processor.gui.icon_provider import (
@@ -33,6 +34,7 @@ from photo_processor.gui.tabs.report_tab import ReportTab
 from photo_processor.gui.tabs.setup_tab import SetupTab
 from photo_processor.infra.cloud.google_drive_credentials_resolver import GoogleDriveCredentialsResolver
 from photo_processor.infra.cloud.google_drive_oauth import GoogleDriveOAuthFlow
+from photo_processor.infra.cloud.google_drive_uploader import GoogleDriveUploader
 from photo_processor.infra.filesystem.file_scanner import scan_supported_images
 from photo_processor.infra.filesystem.output_path_builder import build_output_path
 from photo_processor.infra.imaging.image_processor import ImageProcessor
@@ -148,8 +150,8 @@ try:
             self.progress_count_label = QLabel(root)
             self.setup_tab.source_browse_button.clicked.connect(self._choose_source_folder)
             self.setup_tab.output_browse_button.clicked.connect(self._choose_output_folder)
-            self.setup_tab.cloud_connect_button.clicked.connect(self._connect_google_drive)
-            self.setup_tab.cloud_disconnect_button.clicked.connect(self._disconnect_google_drive)
+            self.setup_tab.google_drive_button.clicked.connect(self._toggle_google_drive_connection)
+            self.setup_tab.cloud_browse_button.clicked.connect(self._browse_google_drive_folder)
             self.setup_tab.source_path_edit.textEdited.connect(self._enable_source_count_refresh)
             self.setup_tab.source_path_edit.textChanged.connect(self._schedule_source_file_count_refresh)
             for checkbox in self.setup_tab.format_checkboxes.values():
@@ -230,9 +232,10 @@ try:
                 cloud_upload=CloudUploadSettings(
                     enabled=self.setup_tab.cloud_enabled_check.isChecked(),
                     provider=self.setup_tab.selected_cloud_provider(),
-                    connection_id=self.setup_tab.cloud_connect_button.property("connection_id"),
+                    connection_id=self.setup_tab.google_drive_button.property("connection_id"),
                     account_email=self.setup_tab.cloud_account_value.property("account_email"),
-                    remote_folder=self.setup_tab.cloud_remote_folder_edit.text().strip() or None,
+                    remote_folder=self.setup_tab.selected_cloud_remote_folder_id(),
+                    remote_folder_display=self.setup_tab.selected_cloud_remote_folder_display(),
                 ),
                 output_policy=OutputPolicy(
                     filename_suffix=self.setup_tab.suffix_edit.text(),
@@ -257,8 +260,10 @@ try:
             self.setup_tab.set_source_formats(snapshot.source_formats)
             self.setup_tab.set_output_format(snapshot.output_format)
             self.setup_tab.cloud_enabled_check.setChecked(bool(snapshot.cloud_upload_enabled))
-            self.setup_tab.set_cloud_provider(snapshot.cloud_provider)
-            self.setup_tab.cloud_remote_folder_edit.setText(snapshot.cloud_remote_folder or "")
+            self.setup_tab.set_cloud_remote_folder(
+                snapshot.cloud_remote_folder,
+                snapshot.cloud_remote_folder_display,
+            )
             self._set_cloud_connection(snapshot.cloud_connection_id, snapshot.cloud_account_email)
             self._set_combo_data(self.processing_tab.units_combo, snapshot.units or Units.PIXELS.value)
             self._set_combo_data(self.processing_tab.resize_mode_combo, snapshot.resize_mode or ResizeMode.CONTAIN.value)
@@ -279,8 +284,7 @@ try:
             self.setup_tab.set_source_formats(None)
             self.setup_tab.set_output_format(None)
             self.setup_tab.cloud_enabled_check.setChecked(False)
-            self.setup_tab.set_cloud_provider(CloudProvider.GOOGLE_DRIVE.value)
-            self.setup_tab.cloud_remote_folder_edit.setText("")
+            self.setup_tab.set_cloud_remote_folder(None, None)
             self._set_cloud_connection(None, None)
             self._set_combo_data(self.processing_tab.units_combo, Units.PIXELS.value)
             self._set_combo_data(self.processing_tab.resize_mode_combo, ResizeMode.CONTAIN.value)
@@ -296,11 +300,20 @@ try:
                     break
 
         def _set_cloud_connection(self, connection_id: str | None, account_email: str | None) -> None:
-            self.setup_tab.cloud_connect_button.setProperty("connection_id", connection_id)
+            self.setup_tab.google_drive_button.blockSignals(True)
+            self.setup_tab.google_drive_button.setChecked(bool(connection_id))
+            self.setup_tab.google_drive_button.blockSignals(False)
+            self.setup_tab.google_drive_button.setProperty("connection_id", connection_id)
             self.setup_tab.cloud_account_value.setProperty("account_email", account_email)
             self.setup_tab.set_cloud_account_text(account_email or self.translator.text("cloud.status.not_connected"))
             self.setup_tab.update_connection_status(bool(connection_id), self.translator.text)
-            self.setup_tab.cloud_disconnect_button.setEnabled(bool(connection_id))
+            self._refresh_cloud_action_availability()
+
+        def _refresh_cloud_action_availability(self, *_args) -> None:
+            is_busy = self.processing_thread is not None or self.cloud_connect_thread is not None
+            has_connection = bool(self.setup_tab.google_drive_button.property("connection_id"))
+            self.setup_tab.google_drive_button.setEnabled(not is_busy)
+            self.setup_tab.cloud_browse_button.setEnabled(not is_busy and has_connection)
 
         def _apply_selected_preset(self) -> None:
             preset_id = self.setup_tab.preset_combo.currentData()
@@ -344,9 +357,52 @@ try:
             if folder:
                 self.setup_tab.output_path_edit.setText(folder)
 
-        def _connect_google_drive(self) -> None:
-            if self.setup_tab.selected_cloud_provider() is not CloudProvider.GOOGLE_DRIVE:
+        def _browse_google_drive_folder(self) -> None:
+            t = self.translator.text
+            if not self.setup_tab.google_drive_button.property("connection_id"):
+                QMessageBox.information(
+                    self,
+                    t("dialog.cloud_browse.title"),
+                    t("dialog.cloud_browse.not_connected"),
+                )
                 return
+            try:
+                settings = self._build_settings()
+                credentials = self.google_drive_credentials_resolver.resolve(settings)
+                dialog = GoogleDriveFolderBrowserDialog(
+                    uploader=GoogleDriveUploader(credentials),
+                    t=t,
+                    initial_folder_id=self.setup_tab.selected_cloud_remote_folder_id(),
+                    parent=self,
+                )
+            except Exception as exc:
+                QMessageBox.critical(
+                    self,
+                    t("dialog.cloud_browse.failed.title"),
+                    str(exc),
+                )
+                return
+            if dialog.exec():
+                selected_folder_id = dialog.selected_folder_id()
+                if selected_folder_id:
+                    self.setup_tab.set_cloud_remote_folder(
+                        selected_folder_id,
+                        dialog.selected_folder_path(),
+                    )
+                self._save_settings()
+                self.statusBar().showMessage(
+                    t("status.cloud_folder_selected").format(
+                        name=dialog.selected_folder_path() or dialog.selected_folder_name() or selected_folder_id or "root"
+                    )
+                )
+
+        def _toggle_google_drive_connection(self, is_checked: bool) -> None:
+            if is_checked:
+                self._connect_google_drive()
+                return
+            self._disconnect_google_drive()
+
+        def _connect_google_drive(self) -> None:
             self._set_cloud_connect_state(True)
             self.statusBar().showMessage(self.translator.text("status.cloud_connecting"))
             use_case = ConnectGoogleDriveUseCase(
@@ -366,7 +422,7 @@ try:
 
         def _disconnect_google_drive(self) -> None:
             DisconnectGoogleDriveUseCase(self.google_drive_credentials_resolver).run(
-                self.setup_tab.cloud_connect_button.property("connection_id")
+                self.setup_tab.google_drive_button.property("connection_id")
             )
             self._set_cloud_connection(None, None)
             self._save_settings()
@@ -375,13 +431,13 @@ try:
         def _handle_cloud_connect_finished(self, connection: GoogleDriveConnection) -> None:
             self._set_cloud_connect_state(False)
             self.setup_tab.cloud_enabled_check.setChecked(True)
-            self.setup_tab.set_cloud_provider(CloudProvider.GOOGLE_DRIVE.value)
             self._set_cloud_connection(connection.connection_id, connection.account_email)
             self._save_settings()
             self.statusBar().showMessage(self.translator.text("status.cloud_connected"))
 
         def _handle_cloud_connect_failed(self, message: str) -> None:
             self._set_cloud_connect_state(False)
+            self._set_cloud_connection(None, None)
             QMessageBox.critical(
                 self,
                 self.translator.text("dialog.cloud_connect_failed.title"),
@@ -395,16 +451,12 @@ try:
                 self.cloud_connect_thread.deleteLater()
             self.cloud_connect_worker = None
             self.cloud_connect_thread = None
+            self._refresh_cloud_action_availability()
 
         def _set_cloud_connect_state(self, is_connecting: bool) -> None:
-            self.setup_tab.cloud_connect_button.setEnabled(not is_connecting)
-            self.setup_tab.cloud_disconnect_button.setEnabled(
-                not is_connecting and bool(self.setup_tab.cloud_connect_button.property("connection_id"))
-            )
-            self.setup_tab.google_drive_button.setEnabled(not is_connecting)
-            self.setup_tab.dropbox_button.setEnabled(not is_connecting)
             self.setup_tab.cloud_enabled_check.setEnabled(not is_connecting)
             self.setup_tab.cloud_remote_folder_edit.setEnabled(not is_connecting)
+            self._refresh_cloud_action_availability()
 
         def _start_processing(self) -> None:
             self._run_processing(dry_run=False)
@@ -559,13 +611,8 @@ try:
             self.setup_tab.source_browse_button.setEnabled(not is_running)
             self.setup_tab.output_browse_button.setEnabled(not is_running)
             self.manual_tab.save_current_button.setEnabled(not is_running)
-            self.setup_tab.cloud_connect_button.setEnabled(not is_running and self.cloud_connect_thread is None)
-            self.setup_tab.cloud_disconnect_button.setEnabled(
-                not is_running
-                and self.cloud_connect_thread is None
-                and bool(self.setup_tab.cloud_connect_button.property("connection_id"))
-            )
             self.tabs.setEnabled(not is_running)
+            self._refresh_cloud_action_availability()
             if is_running:
                 self.statusBar().showMessage(self.translator.text("status.processing_started"))
             else:
@@ -746,7 +793,7 @@ try:
             self.tabs.setTabText(3, t("tab.report"))
             self.setup_tab.retranslate(t)
             self._set_cloud_connection(
-                self.setup_tab.cloud_connect_button.property("connection_id"),
+                self.setup_tab.google_drive_button.property("connection_id"),
                 self.setup_tab.cloud_account_value.property("account_email"),
             )
             self.processing_tab.retranslate(t)

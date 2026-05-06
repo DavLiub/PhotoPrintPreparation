@@ -18,6 +18,13 @@ class GoogleDriveCredentials:
     client_secret: str | None = None
 
 
+@dataclass(slots=True, frozen=True)
+class GoogleDriveFolder:
+    folder_id: str
+    name: str
+    parent_id: str | None = None
+
+
 class GoogleDriveUploader:
     def __init__(
         self,
@@ -70,6 +77,78 @@ class GoogleDriveUploader:
             remote_url=remote_url,
             file_id=file_id,
         )
+
+    def list_folders(self, parent_id: str | None = None) -> list[GoogleDriveFolder]:
+        access_token = self._refresh_access_token()
+        target_parent_id = None if parent_id in (None, "", "root") else parent_id
+        clauses = ["mimeType = 'application/vnd.google-apps.folder'", "trashed = false"]
+        clauses.append(f"'{target_parent_id or 'root'}' in parents")
+        query = " and ".join(clauses)
+        url = (
+            "https://www.googleapis.com/drive/v3/files?"
+            + parse.urlencode(
+                {
+                    "q": query,
+                    "fields": "files(id,name,parents)",
+                    "pageSize": "200",
+                    "orderBy": "name_natural",
+                    "includeItemsFromAllDrives": "true",
+                    "supportsAllDrives": "true",
+                }
+            )
+        )
+        data = self._request_json(
+            method="GET",
+            url=url,
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+        folders: list[GoogleDriveFolder] = []
+        for item in data.get("files", []):
+            parents = item.get("parents") or []
+            parent = str(parents[0]) if parents else None
+            folders.append(
+                GoogleDriveFolder(
+                    folder_id=str(item["id"]),
+                    name=str(item.get("name") or item["id"]),
+                    parent_id=parent,
+                )
+            )
+        return folders
+
+    def get_folder(self, folder_id: str | None) -> GoogleDriveFolder:
+        if folder_id in (None, "", "root"):
+            return GoogleDriveFolder(folder_id="root", name="My Drive", parent_id=None)
+        access_token = self._refresh_access_token()
+        data = self._request_json(
+            method="GET",
+            url=(
+                f"https://www.googleapis.com/drive/v3/files/{folder_id}?"
+                + parse.urlencode(
+                    {
+                        "fields": "id,name,parents",
+                        "supportsAllDrives": "true",
+                    }
+                )
+            ),
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+        parents = data.get("parents") or []
+        return GoogleDriveFolder(
+            folder_id=str(data["id"]),
+            name=str(data.get("name") or data["id"]),
+            parent_id=str(parents[0]) if parents else None,
+        )
+
+    def get_folder_path(self, folder_id: str | None) -> str:
+        folder = self.get_folder(folder_id)
+        names = [folder.name]
+        parent_id = folder.parent_id
+        while parent_id is not None:
+            parent = self.get_folder(parent_id)
+            names.append(parent.name)
+            parent_id = parent.parent_id
+        names.reverse()
+        return " / ".join(names)
 
     def _refresh_access_token(self) -> str:
         payload_data = {
@@ -188,7 +267,15 @@ class GoogleDriveUploader:
     ) -> dict[str, object]:
         status_code, payload = self.requester(method, url, headers, body)
         if status_code >= 400:
-            raise RuntimeError(f"Google Drive request failed with status {status_code}: {payload.decode('utf-8', errors='replace')}")
+            message = payload.decode("utf-8", errors="replace")
+            if status_code in (401, 403):
+                raise RuntimeError(
+                    "Google Drive request was rejected by Google. "
+                    "The saved connection may be missing required Drive permissions. "
+                    "Disconnect Google Drive and connect it again, then retry. "
+                    f"Details: {message}"
+                )
+            raise RuntimeError(f"Google Drive request failed with status {status_code}: {message}")
         if not payload:
             return {}
         return json.loads(payload.decode("utf-8"))
