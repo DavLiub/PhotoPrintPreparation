@@ -148,6 +148,7 @@ try:
             self.progress_bar.setMinimum(0)
             self.progress_bar.setValue(0)
             self.progress_count_label = QLabel(root)
+            self.upload_phase_active = False
             self.setup_tab.source_browse_button.clicked.connect(self._choose_source_folder)
             self.setup_tab.output_browse_button.clicked.connect(self._choose_output_folder)
             self.setup_tab.google_drive_button.clicked.connect(self._toggle_google_drive_connection)
@@ -458,6 +459,15 @@ try:
             self.setup_tab.cloud_remote_folder_edit.setEnabled(not is_connecting)
             self._refresh_cloud_action_availability()
 
+        def _update_cloud_upload_progress(self, current: int, total: int) -> None:
+            self.upload_phase_active = total > 0 and current < total
+            self.setup_tab.update_cloud_upload_progress(current, total)
+            self._refresh_cloud_action_availability()
+            if total > 0:
+                self.statusBar().showMessage(
+                    self.translator.text("status.cloud_uploading").format(current=current, total=total)
+                )
+
         def _start_processing(self) -> None:
             self._run_processing(dry_run=False)
 
@@ -474,6 +484,8 @@ try:
             self.settings_controller.save_settings(settings, self.setup_tab.preset_combo.currentData())
             self.processing_dry_run = dry_run
             self.current_run_settings = settings
+            self.upload_phase_active = False
+            self.setup_tab.update_cloud_upload_progress(0, 0)
             self._set_processing_state(True)
             known_total = len(scan_supported_images(settings.source_folder, settings.source_formats))
             self._update_progress(0, known_total)
@@ -482,6 +494,7 @@ try:
             self.processing_worker.moveToThread(self.processing_thread)
             self.processing_thread.started.connect(self.processing_worker.run)
             self.processing_worker.progress.connect(self._update_progress)
+            self.processing_worker.upload_progress.connect(self._update_cloud_upload_progress)
             self.processing_worker.finished.connect(self._handle_processing_finished)
             self.processing_worker.failed.connect(self._handle_processing_failed)
             self.processing_worker.finished.connect(self.processing_thread.quit)
@@ -570,12 +583,21 @@ try:
                 return
             self.report_tab.set_report_text(self._format_report_text(settings, execution.report, execution.result))
             self.tabs.setCurrentWidget(self.report_tab)
+            self.upload_phase_active = False
+            if settings.cloud_upload.is_enabled:
+                uploaded_total = (
+                    execution.report.uploaded_files
+                    + execution.report.upload_skipped_files
+                    + execution.report.upload_error_files
+                )
+                self.setup_tab.update_cloud_upload_progress(uploaded_total, uploaded_total)
             self._set_processing_state(False)
             self._update_progress(execution.report.found_files, execution.report.found_files)
             status_key = "status.preview_ready" if self.processing_dry_run else "status.processing_complete"
             self.statusBar().showMessage(self.translator.text(status_key))
 
         def _handle_processing_failed(self, message: str) -> None:
+            self.upload_phase_active = False
             self._set_processing_state(False)
             self.report_tab.set_report_text(
                 "\n".join(
@@ -603,19 +625,42 @@ try:
             self.processing_worker = None
             self.processing_thread = None
             self.current_run_settings = None
+            self._refresh_cloud_action_availability()
 
         def _set_processing_state(self, is_running: bool) -> None:
             self.start_button.setEnabled(not is_running)
             self.open_output_button.setEnabled(not is_running)
             self.save_settings_button.setEnabled(not is_running)
+            self.setup_tab.source_path_edit.setEnabled(not is_running)
             self.setup_tab.source_browse_button.setEnabled(not is_running)
+            self.setup_tab.preset_combo.setEnabled(not is_running)
+            for checkbox in self.setup_tab.format_checkboxes.values():
+                checkbox.setEnabled(not is_running)
+            self.setup_tab.output_path_edit.setEnabled(not is_running)
             self.setup_tab.output_browse_button.setEnabled(not is_running)
+            self.setup_tab.suffix_edit.setEnabled(not is_running)
+            self.setup_tab.output_format_combo.setEnabled(not is_running)
+            self.setup_tab.conflict_combo.setEnabled(not is_running)
+            self.setup_tab.cloud_enabled_check.setEnabled(not is_running)
+            self.setup_tab.cloud_remote_folder_edit.setEnabled(not is_running)
+            self.processing_tab.units_combo.setEnabled(not is_running)
+            self.processing_tab.width_spin.setEnabled(not is_running)
+            self.processing_tab.height_spin.setEnabled(not is_running)
+            self.processing_tab.dpi_spin.setEnabled(not is_running)
+            self.processing_tab.auto_rotate_check.setEnabled(not is_running)
+            self.processing_tab.resize_mode_combo.setEnabled(not is_running)
+            self.processing_tab.crop_anchor_combo.setEnabled(not is_running)
+            self.processing_tab.max_file_size_spin.setEnabled(not is_running)
+            self.manual_tab.file_list.setEnabled(not is_running)
+            self.manual_tab.manual_resize_mode_combo.setEnabled(not is_running)
+            self.manual_tab.previous_button.setEnabled(not is_running and self.manual_tab.previous_button.isEnabled())
+            self.manual_tab.next_button.setEnabled(not is_running and self.manual_tab.next_button.isEnabled())
             self.manual_tab.save_current_button.setEnabled(not is_running)
-            self.tabs.setEnabled(not is_running)
             self._refresh_cloud_action_availability()
             if is_running:
                 self.statusBar().showMessage(self.translator.text("status.processing_started"))
             else:
+                self.manual_tab._update_navigation_state()
                 self._schedule_source_file_count_refresh()
 
         def _update_progress(self, current: int, total: int) -> None:

@@ -16,6 +16,7 @@ try:
         QHBoxLayout,
         QLabel,
         QLineEdit,
+        QProgressBar,
         QPushButton,
         QToolButton,
         QVBoxLayout,
@@ -111,17 +112,30 @@ try:
             self.cloud_status_badge.setMinimumWidth(120)
             self.cloud_status_badge.setAlignment(self.cloud_status_badge.alignment())
             self.cloud_account_value = QLabel(self.cloud_group)
+            self.cloud_upload_progress_bar = QProgressBar(self.cloud_group)
+            self.cloud_upload_progress_bar.setMinimum(0)
+            self.cloud_upload_progress_bar.setMaximum(1)
+            self.cloud_upload_progress_bar.setValue(0)
+            self.cloud_upload_progress_value = QLabel(self.cloud_group)
+            cloud_progress_widget = QWidget(self.cloud_group)
+            cloud_progress_row = QHBoxLayout(cloud_progress_widget)
+            cloud_progress_row.setContentsMargins(0, 0, 0, 0)
+            cloud_progress_row.setSpacing(8)
+            cloud_progress_row.addWidget(self.cloud_upload_progress_bar, 1)
+            cloud_progress_row.addWidget(self.cloud_upload_progress_value)
 
             self.cloud_enabled_label = QLabel(self.cloud_group)
             self.cloud_provider_label = QLabel(self.cloud_group)
             self.cloud_remote_folder_label = QLabel(self.cloud_group)
             self.cloud_status_label = QLabel(self.cloud_group)
             self.cloud_account_label = QLabel(self.cloud_group)
+            self.cloud_upload_progress_label = QLabel(self.cloud_group)
             cloud_form.addRow(self.cloud_enabled_label, self.cloud_enabled_check)
             cloud_form.addRow(self.cloud_provider_label, self.cloud_provider_widget)
             cloud_form.addRow(self.cloud_status_label, self.cloud_status_badge)
             cloud_form.addRow(self.cloud_account_label, self.cloud_account_value)
             cloud_form.addRow(self.cloud_remote_folder_label, cloud_folder_widget)
+            cloud_form.addRow(self.cloud_upload_progress_label, cloud_progress_widget)
 
             layout.addWidget(self.source_group)
             layout.addWidget(self.output_group)
@@ -198,11 +212,14 @@ try:
             self.cloud_status_label.setText(t("cloud.connection_status"))
             self.cloud_account_label.setText(t("cloud.account"))
             self.cloud_remote_folder_label.setText(t("cloud.remote_folder"))
+            self.cloud_upload_progress_label.setText(t("cloud.upload_progress"))
             self.cloud_browse_button.setText(t("cloud.browse"))
             self.google_drive_button.setText(t("cloud.provider.google_drive"))
             self.update_connection_status(bool(self.cloud_account_value.property("account_email")), t)
             if not self.cloud_account_value.property("account_email"):
                 self.cloud_account_value.setText(t("cloud.status.not_connected"))
+            if not self.cloud_upload_progress_value.text():
+                self.update_cloud_upload_progress(0, 0)
 
         def update_connection_status(self, is_connected: bool, t) -> None:
             if is_connected:
@@ -253,6 +270,12 @@ try:
         def set_cloud_remote_folder(self, folder_id: str | None, display_text: str | None = None) -> None:
             self.cloud_remote_folder_edit.setProperty("folder_id", folder_id)
             self.cloud_remote_folder_edit.setText(display_text or folder_id or "")
+
+        def update_cloud_upload_progress(self, current: int, total: int) -> None:
+            safe_total = max(total, 0)
+            self.cloud_upload_progress_bar.setMaximum(max(safe_total, 1))
+            self.cloud_upload_progress_bar.setValue(min(current, max(safe_total, 1)))
+            self.cloud_upload_progress_value.setText(f"{current}/{safe_total}")
 
         def selected_cloud_provider(self) -> CloudProvider | None:
             if self.google_drive_button.isChecked():

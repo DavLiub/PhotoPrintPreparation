@@ -11,9 +11,23 @@ class PostProcessingUseCase:
         self.settings = settings
         self.uploader = uploader
 
-    def run(self, result: BatchProcessingResult) -> BatchProcessingResult:
-        for item in result.items:
+    def run(
+        self,
+        result: BatchProcessingResult,
+        on_progress: callable[[int, int], None] | None = None,
+    ) -> BatchProcessingResult:
+        candidates = [
+            item
+            for item in result.items
+            if item.success and item.output_path.exists()
+        ]
+        if on_progress is not None:
+            on_progress(0, len(candidates))
+
+        for index, item in enumerate(candidates, start=1):
             self._process_item(result, item)
+            if on_progress is not None:
+                on_progress(index, len(candidates))
         return result
 
     def _process_item(self, result: BatchProcessingResult, item: SingleImageResult) -> None:

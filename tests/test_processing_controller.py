@@ -79,6 +79,45 @@ class ProcessingControllerTestCase(unittest.TestCase):
         self.assertEqual(execution.report.upload_error_files, 0)
         self.assertEqual(execution.result.items[0].upload_result.status, UploadStatus.SUCCESS)
 
+    def test_run_reports_upload_progress_when_cloud_upload_is_enabled(self) -> None:
+        source_dir = Path(self._testMethodName)
+        output_dir = source_dir / "out"
+        source_dir.mkdir(exist_ok=True)
+        output_dir.mkdir(exist_ok=True)
+        self.addCleanup(_cleanup_tree, source_dir)
+
+        source_file = source_dir / "a.jpg"
+        source_file.write_bytes(b"jpg")
+
+        settings = ProcessingSettings(
+            source_folder=source_dir,
+            output_folder=output_dir,
+            cloud_upload=CloudUploadSettings(
+                enabled=True,
+                provider=CloudProvider.GOOGLE_DRIVE,
+                remote_folder="folder",
+            ),
+        )
+        upload_progress: list[tuple[int, int]] = []
+
+        def fake_process(task) -> SingleImageResult:
+            task.output_path.write_bytes(b"processed")
+            return SingleImageResult(
+                source_path=task.source_path,
+                output_path=task.output_path,
+                status=ImageProcessStatus.SUCCESS,
+            )
+
+        with patch("photo_processor.app.use_cases.batch_processing.ImageProcessor.process", side_effect=fake_process):
+            ProcessingController(
+                cloud_uploader_factory=lambda _settings: FakeUploader()
+            ).run(
+                settings,
+                on_upload_progress=lambda current, total: upload_progress.append((current, total)),
+            )
+
+        self.assertEqual(upload_progress, [(0, 1), (1, 1)])
+
 
 def _cleanup_tree(path: Path) -> None:
     for child in sorted(path.rglob("*"), reverse=True):

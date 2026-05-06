@@ -10,6 +10,7 @@ try:
         finished = Signal(object)
         failed = Signal(str)
         progress = Signal(int, int)
+        upload_progress = Signal(int, int)
 
         def __init__(
             self,
@@ -29,6 +30,7 @@ try:
                     self.settings,
                     dry_run=self.dry_run,
                     on_progress=self._emit_progress,
+                    on_upload_progress=self._emit_upload_progress,
                 )
             except Exception as exc:  # pragma: no cover - defensive GUI boundary
                 self.failed.emit(str(exc))
@@ -37,6 +39,9 @@ try:
 
         def _emit_progress(self, current: int, total: int) -> None:
             self.progress.emit(current, total)
+
+        def _emit_upload_progress(self, current: int, total: int) -> None:
+            self.upload_progress.emit(current, total)
 
 except ImportError:  # pragma: no cover - depends on environment
     class ProcessingWorker:  # type: ignore[no-redef]

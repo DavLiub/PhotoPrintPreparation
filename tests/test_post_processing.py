@@ -110,6 +110,34 @@ class PostProcessingUseCaseTestCase(unittest.TestCase):
         self.assertEqual(fail_item.upload_result.status, UploadStatus.ERROR)
         self.assertIn("failed to upload", fail_item.upload_result.error_message or "")
 
+    def test_reports_upload_progress_for_upload_candidates(self) -> None:
+        work_dir = Path(self._testMethodName)
+        work_dir.mkdir(exist_ok=True)
+        self.addCleanup(_cleanup_tree, work_dir)
+
+        first_file = work_dir / "a.jpg"
+        second_file = work_dir / "b.jpg"
+        first_file.write_bytes(b"a")
+        second_file.write_bytes(b"b")
+        result = BatchProcessingResult(found_files=3)
+        result.add_item(
+            SingleImageResult(source_path=Path("src/a.jpg"), output_path=first_file, status=ImageProcessStatus.SUCCESS)
+        )
+        result.add_item(
+            SingleImageResult(source_path=Path("src/b.jpg"), output_path=second_file, status=ImageProcessStatus.SUCCESS)
+        )
+        result.add_item(
+            SingleImageResult(source_path=Path("src/c.jpg"), output_path=work_dir / "c.jpg", status=ImageProcessStatus.ERROR)
+        )
+
+        progress_updates: list[tuple[int, int]] = []
+        PostProcessingUseCase(
+            CloudUploadSettings(enabled=True, provider=CloudProvider.GOOGLE_DRIVE),
+            FakeUploader(),
+        ).run(result, on_progress=lambda current, total: progress_updates.append((current, total)))
+
+        self.assertEqual(progress_updates, [(0, 2), (1, 2), (2, 2)])
+
 
 def _cleanup_tree(path: Path) -> None:
     for child in sorted(path.rglob("*"), reverse=True):
