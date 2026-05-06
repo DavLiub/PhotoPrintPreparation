@@ -514,6 +514,7 @@ try:
                 f"Uploaded: {report.uploaded_files}",
                 f"Upload skipped: {report.upload_skipped_files}",
                 f"Upload errors: {report.upload_error_files}",
+                f"Uploaded size: {round(report.uploaded_bytes / (1024 * 1024), 2)} MB",
                 f"Warnings: {report.warning_count}",
                 "",
                 t("report.context"),
@@ -523,6 +524,16 @@ try:
                 f"{t('report.resize_mode')}: {settings.resize_mode.value}",
                 t("report.orientation_note").format(width=target_height, height=target_width),
             ]
+
+            if report.cloud_provider or report.cloud_remote_folder:
+                lines.extend(
+                    [
+                        "",
+                        "Cloud upload",
+                        f"Provider: {report.cloud_provider or '-'}",
+                        f"Folder: {report.cloud_remote_folder or '-'}",
+                    ]
+                )
 
             if result.items:
                 lines.append("")

@@ -156,6 +156,12 @@ try:
                   <li><b>{t("output.suffix")}:</b> {t("help.desc.filename_suffix")}</li>
                   <li><b>{t("output.extension")}:</b> {t("help.desc.output_extension")}</li>
                   <li><b>{t("output.conflict_strategy")}:</b> {t("help.desc.conflict_strategy")}</li>
+                  <li><b>{t("cloud.enabled")}:</b> {t("help.desc.cloud_enabled")}</li>
+                  <li><b>{t("cloud.provider.google_drive")}:</b> {t("help.desc.cloud_provider")}</li>
+                  <li><b>{t("cloud.connection_status")}:</b> {t("help.desc.cloud_connection_status")}</li>
+                  <li><b>{t("cloud.account")}:</b> {t("help.desc.cloud_account")}</li>
+                  <li><b>{t("cloud.remote_folder")}:</b> {t("help.desc.cloud_remote_folder")}</li>
+                  <li><b>{t("cloud.upload_progress")}:</b> {t("help.desc.cloud_upload_progress")}</li>
                 </ul>
 
                 <a name="processing"></a>

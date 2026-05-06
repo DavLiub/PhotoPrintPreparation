@@ -43,5 +43,5 @@ class ProcessingController:
             )
         return ProcessingExecution(
             result=result,
-            report=build_processing_report(result),
+            report=build_processing_report(result, settings=settings),
         )

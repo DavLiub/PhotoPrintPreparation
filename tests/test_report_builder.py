@@ -5,8 +5,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from photo_processor.app.reporting.report_builder import build_processing_report
-from photo_processor.core.cloud_upload import CloudProvider, UploadResult, UploadStatus
+from photo_processor.core.cloud_upload import CloudProvider, CloudUploadSettings, UploadResult, UploadStatus
 from photo_processor.core.processing_result import BatchProcessingResult
+from photo_processor.core.settings import ProcessingSettings
 from photo_processor.core.single_image_result import ImageProcessStatus, SingleImageResult
 
 
@@ -54,7 +55,19 @@ class ReportBuilderTestCase(unittest.TestCase):
             ),
         )
 
-        report = build_processing_report(result)
+        report = build_processing_report(
+            result,
+            settings=ProcessingSettings(
+                source_folder=Path("src"),
+                output_folder=Path("out"),
+                cloud_upload=CloudUploadSettings(
+                    enabled=True,
+                    provider=CloudProvider.GOOGLE_DRIVE,
+                    remote_folder="folder-id",
+                    remote_folder_display="My Drive / Prints",
+                ),
+            ),
+        )
 
         self.assertEqual(report.found_files, 3)
         self.assertEqual(report.processed_files, 1)
@@ -63,7 +76,13 @@ class ReportBuilderTestCase(unittest.TestCase):
         self.assertEqual(report.uploaded_files, 1)
         self.assertEqual(report.upload_skipped_files, 1)
         self.assertEqual(report.upload_error_files, 0)
+        self.assertEqual(report.uploaded_bytes, 0)
+        self.assertEqual(report.cloud_provider, CloudProvider.GOOGLE_DRIVE.value)
+        self.assertEqual(report.cloud_remote_folder, "My Drive / Prints")
         self.assertEqual(report.warning_count, 3)
         self.assertIn("Uploaded: 1", report.summary_lines)
         self.assertIn("Upload skipped: 1", report.summary_lines)
+        self.assertIn("Uploaded size: 0.0 MB", report.summary_lines)
+        self.assertIn("Cloud provider: google_drive", report.summary_lines)
+        self.assertIn("Cloud folder: My Drive / Prints", report.summary_lines)
         self.assertIn("Warnings: 3", report.summary_lines)
