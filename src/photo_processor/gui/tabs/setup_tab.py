@@ -112,6 +112,8 @@ try:
             self.cloud_status_badge.setMinimumWidth(120)
             self.cloud_status_badge.setAlignment(self.cloud_status_badge.alignment())
             self.cloud_account_value = QLabel(self.cloud_group)
+            self.cloud_share_link_edit = QLineEdit(self.cloud_group)
+            self.cloud_share_link_edit.setReadOnly(True)
             self.cloud_upload_progress_bar = QProgressBar(self.cloud_group)
             self.cloud_upload_progress_bar.setMinimum(0)
             self.cloud_upload_progress_bar.setMaximum(1)
@@ -129,12 +131,14 @@ try:
             self.cloud_remote_folder_label = QLabel(self.cloud_group)
             self.cloud_status_label = QLabel(self.cloud_group)
             self.cloud_account_label = QLabel(self.cloud_group)
+            self.cloud_share_link_label = QLabel(self.cloud_group)
             self.cloud_upload_progress_label = QLabel(self.cloud_group)
             cloud_form.addRow(self.cloud_enabled_label, self.cloud_enabled_check)
             cloud_form.addRow(self.cloud_provider_label, self.cloud_provider_widget)
             cloud_form.addRow(self.cloud_status_label, self.cloud_status_badge)
             cloud_form.addRow(self.cloud_account_label, self.cloud_account_value)
             cloud_form.addRow(self.cloud_remote_folder_label, cloud_folder_widget)
+            cloud_form.addRow(self.cloud_share_link_label, self.cloud_share_link_edit)
             cloud_form.addRow(self.cloud_upload_progress_label, cloud_progress_widget)
 
             layout.addWidget(self.source_group)
@@ -212,6 +216,7 @@ try:
             self.cloud_status_label.setText(t("cloud.connection_status"))
             self.cloud_account_label.setText(t("cloud.account"))
             self.cloud_remote_folder_label.setText(t("cloud.remote_folder"))
+            self.cloud_share_link_label.setText(t("cloud.share_link"))
             self.cloud_upload_progress_label.setText(t("cloud.upload_progress"))
             self.cloud_browse_button.setText(t("cloud.browse"))
             self.google_drive_button.setText(t("cloud.provider.google_drive"))
@@ -270,6 +275,13 @@ try:
         def set_cloud_remote_folder(self, folder_id: str | None, display_text: str | None = None) -> None:
             self.cloud_remote_folder_edit.setProperty("folder_id", folder_id)
             self.cloud_remote_folder_edit.setText(display_text or folder_id or "")
+
+        def selected_cloud_remote_folder_share_link(self) -> str | None:
+            text = self.cloud_share_link_edit.text().strip()
+            return text or None
+
+        def set_cloud_remote_folder_share_link(self, share_link: str | None) -> None:
+            self.cloud_share_link_edit.setText(share_link or "")
 
         def update_cloud_upload_progress(self, current: int, total: int) -> None:
             safe_total = max(total, 0)

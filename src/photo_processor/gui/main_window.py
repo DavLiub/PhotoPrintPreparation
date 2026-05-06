@@ -237,6 +237,7 @@ try:
                     account_email=self.setup_tab.cloud_account_value.property("account_email"),
                     remote_folder=self.setup_tab.selected_cloud_remote_folder_id(),
                     remote_folder_display=self.setup_tab.selected_cloud_remote_folder_display(),
+                    remote_folder_share_link=self.setup_tab.selected_cloud_remote_folder_share_link(),
                 ),
                 output_policy=OutputPolicy(
                     filename_suffix=self.setup_tab.suffix_edit.text(),
@@ -265,6 +266,7 @@ try:
                 snapshot.cloud_remote_folder,
                 snapshot.cloud_remote_folder_display,
             )
+            self.setup_tab.set_cloud_remote_folder_share_link(snapshot.cloud_remote_folder_share_link)
             self._set_cloud_connection(snapshot.cloud_connection_id, snapshot.cloud_account_email)
             self._set_combo_data(self.processing_tab.units_combo, snapshot.units or Units.PIXELS.value)
             self._set_combo_data(self.processing_tab.resize_mode_combo, snapshot.resize_mode or ResizeMode.CONTAIN.value)
@@ -286,6 +288,7 @@ try:
             self.setup_tab.set_output_format(None)
             self.setup_tab.cloud_enabled_check.setChecked(False)
             self.setup_tab.set_cloud_remote_folder(None, None)
+            self.setup_tab.set_cloud_remote_folder_share_link(None)
             self._set_cloud_connection(None, None)
             self._set_combo_data(self.processing_tab.units_combo, Units.PIXELS.value)
             self._set_combo_data(self.processing_tab.resize_mode_combo, ResizeMode.CONTAIN.value)
@@ -370,8 +373,9 @@ try:
             try:
                 settings = self._build_settings()
                 credentials = self.google_drive_credentials_resolver.resolve(settings)
+                uploader = GoogleDriveUploader(credentials)
                 dialog = GoogleDriveFolderBrowserDialog(
-                    uploader=GoogleDriveUploader(credentials),
+                    uploader=uploader,
                     t=t,
                     initial_folder_id=self.setup_tab.selected_cloud_remote_folder_id(),
                     parent=self,
@@ -386,10 +390,12 @@ try:
             if dialog.exec():
                 selected_folder_id = dialog.selected_folder_id()
                 if selected_folder_id:
+                    share_link = uploader.get_or_create_folder_share_link(selected_folder_id)
                     self.setup_tab.set_cloud_remote_folder(
                         selected_folder_id,
                         dialog.selected_folder_path(),
                     )
+                    self.setup_tab.set_cloud_remote_folder_share_link(share_link)
                 self._save_settings()
                 self.statusBar().showMessage(
                     t("status.cloud_folder_selected").format(

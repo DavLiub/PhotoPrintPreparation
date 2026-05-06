@@ -23,6 +23,7 @@ class CloudUploadSettings:
     account_email: str | None = None
     remote_folder: str | None = None
     remote_folder_display: str | None = None
+    remote_folder_share_link: str | None = None
     create_share_link: bool = False
     delete_local_after_upload: bool = False
     overwrite_remote: bool = False

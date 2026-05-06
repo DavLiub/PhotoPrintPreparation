@@ -161,6 +161,7 @@ try:
                   <li><b>{t("cloud.connection_status")}:</b> {t("help.desc.cloud_connection_status")}</li>
                   <li><b>{t("cloud.account")}:</b> {t("help.desc.cloud_account")}</li>
                   <li><b>{t("cloud.remote_folder")}:</b> {t("help.desc.cloud_remote_folder")}</li>
+                  <li><b>{t("cloud.share_link")}:</b> {t("help.desc.cloud_share_link")}</li>
                   <li><b>{t("cloud.upload_progress")}:</b> {t("help.desc.cloud_upload_progress")}</li>
                 </ul>
 

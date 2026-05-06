@@ -75,6 +75,30 @@ class GoogleDriveUploaderFolderTestCase(unittest.TestCase):
 
         self.assertEqual(path, "My Drive / Prints / 2026")
 
+    def test_get_or_create_folder_share_link_reuses_existing_public_access(self) -> None:
+        calls: list[tuple[str, str]] = []
+
+        def requester(method: str, url: str, headers: dict[str, str], body: bytes | None) -> tuple[int, bytes]:
+            calls.append((method, url))
+            if "oauth2.googleapis.com/token" in url:
+                return 200, json.dumps({"access_token": "token-123"}).encode("utf-8")
+            if "/permissions?" in url and method == "GET":
+                return 200, json.dumps({"permissions": [{"id": "perm-1", "type": "anyone", "role": "reader"}]}).encode(
+                    "utf-8"
+                )
+            raise AssertionError(f"Unexpected URL: {url}")
+
+        uploader = GoogleDriveUploader(
+            GoogleDriveCredentials(client_id="client-123", refresh_token="refresh-token"),
+            requester=requester,
+        )
+
+        share_link = uploader.get_or_create_folder_share_link("folder-shared")
+
+        self.assertEqual(share_link, "https://drive.google.com/drive/folders/folder-shared?usp=sharing")
+        self.assertEqual(len(calls), 2)
+        self.assertFalse(any(method == "POST" and "/permissions" in url for method, url in calls))
+
 
 if __name__ == "__main__":
     unittest.main()

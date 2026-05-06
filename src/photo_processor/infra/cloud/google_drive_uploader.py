@@ -150,6 +150,28 @@ class GoogleDriveUploader:
         names.reverse()
         return " / ".join(names)
 
+    def get_or_create_folder_share_link(self, folder_id: str | None) -> str | None:
+        if folder_id in (None, "", "root"):
+            return None
+        access_token = self._refresh_access_token()
+        if not self._folder_has_public_link(access_token, folder_id):
+            self._request_json(
+                method="POST",
+                url=f"https://www.googleapis.com/drive/v3/files/{folder_id}/permissions?supportsAllDrives=true",
+                headers={
+                    "Authorization": f"Bearer {access_token}",
+                    "Content-Type": "application/json",
+                },
+                body=json.dumps(
+                    {
+                        "role": "reader",
+                        "type": "anyone",
+                        "allowFileDiscovery": False,
+                    }
+                ).encode("utf-8"),
+            )
+        return f"https://drive.google.com/drive/folders/{folder_id}?usp=sharing"
+
     def _refresh_access_token(self) -> str:
         payload_data = {
             "client_id": self.credentials.client_id,
@@ -243,6 +265,23 @@ class GoogleDriveUploader:
             body=json.dumps({"role": "reader", "type": "anyone"}).encode("utf-8"),
         )
         return f"https://drive.google.com/file/d/{file_id}/view"
+
+    def _folder_has_public_link(self, access_token: str, folder_id: str) -> bool:
+        data = self._request_json(
+            method="GET",
+            url=(
+                f"https://www.googleapis.com/drive/v3/files/{folder_id}/permissions?"
+                + parse.urlencode(
+                    {
+                        "fields": "permissions(id,type,role,allowFileDiscovery)",
+                        "supportsAllDrives": "true",
+                    }
+                )
+            ),
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+        permissions = data.get("permissions", [])
+        return any(permission.get("type") == "anyone" for permission in permissions)
 
     def _build_multipart_body(self, local_path: Path, metadata: dict[str, object]) -> tuple[bytes, str]:
         boundary = f"photo-processor-{uuid.uuid4().hex}"

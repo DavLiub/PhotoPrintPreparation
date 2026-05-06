@@ -143,6 +143,7 @@ class SettingsFactoryTestCase(unittest.TestCase):
                 cloud_connection_id="google-primary",
                 cloud_account_email="user@example.com",
                 cloud_remote_folder="folder-1",
+                cloud_remote_folder_share_link="https://drive.google.com/drive/folders/folder-1?usp=sharing",
                 cloud_create_share_link=True,
             ),
         )
@@ -162,6 +163,10 @@ class SettingsFactoryTestCase(unittest.TestCase):
         self.assertEqual(settings.cloud_upload.connection_id, "google-primary")
         self.assertEqual(settings.cloud_upload.account_email, "user@example.com")
         self.assertEqual(settings.cloud_upload.remote_folder, "folder-1")
+        self.assertEqual(
+            settings.cloud_upload.remote_folder_share_link,
+            "https://drive.google.com/drive/folders/folder-1?usp=sharing",
+        )
         self.assertTrue(settings.cloud_upload.create_share_link)
 
     def test_build_snapshot_from_settings_serializes_runtime_values(self) -> None:
