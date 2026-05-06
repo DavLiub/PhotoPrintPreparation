@@ -128,6 +128,32 @@ class GoogleDriveUploaderFolderTestCase(unittest.TestCase):
         self.assertEqual(folder.parent_id, "folder-parent")
         self.assertEqual(len(calls), 2)
 
+    def test_folder_requests_reuse_cached_access_token_and_folder_metadata(self) -> None:
+        calls: list[tuple[str, str]] = []
+
+        def requester(method: str, url: str, headers: dict[str, str], body: bytes | None) -> tuple[int, bytes]:
+            calls.append((method, url))
+            if "oauth2.googleapis.com/token" in url:
+                return 200, json.dumps({"access_token": "token-123", "expires_in": 3600}).encode("utf-8")
+            if "/files/folder-c?" in url:
+                return 200, json.dumps({"id": "folder-c", "name": "2026", "parents": ["folder-b"]}).encode("utf-8")
+            if "/files/folder-b?" in url:
+                return 200, json.dumps({"id": "folder-b", "name": "Prints", "parents": ["root"]}).encode("utf-8")
+            raise AssertionError(f"Unexpected URL: {url}")
+
+        uploader = GoogleDriveUploader(
+            GoogleDriveCredentials(client_id="client-123", refresh_token="refresh-token"),
+            requester=requester,
+        )
+
+        path_one = uploader.get_folder_path("folder-c")
+        path_two = uploader.get_folder_path("folder-c")
+
+        self.assertEqual(path_one, "My Drive / Prints / 2026")
+        self.assertEqual(path_two, "My Drive / Prints / 2026")
+        token_calls = [url for _method, url in calls if "oauth2.googleapis.com/token" in url]
+        self.assertEqual(len(token_calls), 1)
+
 
 if __name__ == "__main__":
     unittest.main()

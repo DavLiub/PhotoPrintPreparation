@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import mimetypes
+import time
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
@@ -33,6 +34,12 @@ class GoogleDriveUploader:
     ) -> None:
         self.credentials = credentials
         self.requester = requester or self._default_requester
+        self._access_token: str | None = None
+        self._access_token_expires_at = 0.0
+        self._folder_cache: dict[str, GoogleDriveFolder] = {
+            "root": GoogleDriveFolder(folder_id="root", name="My Drive", parent_id=None)
+        }
+        self._children_cache: dict[str, list[GoogleDriveFolder]] = {}
 
     def upload(self, local_path: Path, settings: CloudUploadSettings) -> UploadResult:
         access_token = self._refresh_access_token()
@@ -79,6 +86,10 @@ class GoogleDriveUploader:
         )
 
     def list_folders(self, parent_id: str | None = None) -> list[GoogleDriveFolder]:
+        cache_key = "root" if parent_id in (None, "", "root") else str(parent_id)
+        cached = self._children_cache.get(cache_key)
+        if cached is not None:
+            return list(cached)
         access_token = self._refresh_access_token()
         target_parent_id = None if parent_id in (None, "", "root") else parent_id
         clauses = ["mimeType = 'application/vnd.google-apps.folder'", "trashed = false"]
@@ -106,23 +117,26 @@ class GoogleDriveUploader:
         for item in data.get("files", []):
             parents = item.get("parents") or []
             parent = str(parents[0]) if parents else None
-            folders.append(
-                GoogleDriveFolder(
-                    folder_id=str(item["id"]),
-                    name=str(item.get("name") or item["id"]),
-                    parent_id=parent,
-                )
+            folder = GoogleDriveFolder(
+                folder_id=str(item["id"]),
+                name=str(item.get("name") or item["id"]),
+                parent_id=parent,
             )
-        return folders
+            folders.append(folder)
+            self._folder_cache[folder.folder_id] = folder
+        self._children_cache[cache_key] = list(folders)
+        return list(folders)
 
     def get_folder(self, folder_id: str | None) -> GoogleDriveFolder:
-        if folder_id in (None, "", "root"):
-            return GoogleDriveFolder(folder_id="root", name="My Drive", parent_id=None)
+        normalized_id = "root" if folder_id in (None, "", "root") else str(folder_id)
+        cached = self._folder_cache.get(normalized_id)
+        if cached is not None:
+            return cached
         access_token = self._refresh_access_token()
         data = self._request_json(
             method="GET",
             url=(
-                f"https://www.googleapis.com/drive/v3/files/{folder_id}?"
+                f"https://www.googleapis.com/drive/v3/files/{normalized_id}?"
                 + parse.urlencode(
                     {
                         "fields": "id,name,parents",
@@ -133,11 +147,13 @@ class GoogleDriveUploader:
             headers={"Authorization": f"Bearer {access_token}"},
         )
         parents = data.get("parents") or []
-        return GoogleDriveFolder(
+        folder = GoogleDriveFolder(
             folder_id=str(data["id"]),
             name=str(data.get("name") or data["id"]),
             parent_id=str(parents[0]) if parents else None,
         )
+        self._folder_cache[folder.folder_id] = folder
+        return folder
 
     def get_folder_path(self, folder_id: str | None) -> str:
         return " / ".join(folder.name for folder in self.get_folder_chain(folder_id))
@@ -174,11 +190,15 @@ class GoogleDriveUploader:
             body=json.dumps(metadata).encode("utf-8"),
         )
         parents = data.get("parents") or []
-        return GoogleDriveFolder(
+        folder = GoogleDriveFolder(
             folder_id=str(data["id"]),
             name=str(data.get("name") or folder_name),
             parent_id=str(parents[0]) if parents else ("root" if parent_id in (None, "", "root") else parent_id),
         )
+        self._folder_cache[folder.folder_id] = folder
+        parent_cache_key = "root" if parent_id in (None, "", "root") else str(parent_id)
+        self._children_cache.pop(parent_cache_key, None)
+        return folder
 
     def get_or_create_folder_share_link(self, folder_id: str | None) -> str | None:
         if folder_id in (None, "", "root"):
@@ -203,6 +223,8 @@ class GoogleDriveUploader:
         return f"https://drive.google.com/drive/folders/{folder_id}?usp=sharing"
 
     def _refresh_access_token(self) -> str:
+        if self._access_token and time.monotonic() < self._access_token_expires_at:
+            return self._access_token
         payload_data = {
             "client_id": self.credentials.client_id,
             "refresh_token": self.credentials.refresh_token,
@@ -220,7 +242,10 @@ class GoogleDriveUploader:
         token = data.get("access_token")
         if not token:
             raise RuntimeError("Google Drive token refresh did not return an access token.")
-        return str(token)
+        expires_in = int(data.get("expires_in", 3600))
+        self._access_token = str(token)
+        self._access_token_expires_at = time.monotonic() + max(expires_in - 60, 60)
+        return self._access_token
 
     def _find_existing_file_id(self, access_token: str, filename: str, folder_id: str | None) -> str | None:
         escaped_name = filename.replace("\\", "\\\\").replace("'", "\\'")
