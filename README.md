@@ -16,7 +16,7 @@ Version `0.1` focuses on the non-UI foundation:
 - batch report structure
 - preset-based processing scenarios
 - desktop GUI with `en/ru/he` localization support
-- post-processing cloud export backend with initial `Google Drive` support in the CLI flow
+- post-processing cloud export backend with initial `Google Drive` support in the CLI and GUI flows
 
 Preview and richer live processing behavior are still incomplete, but the GUI now supports folder selection, full batch start, and report display.
 
@@ -43,24 +43,34 @@ The target authentication model for `Google Drive` is browser-based OAuth:
 3. exchange it for a refresh token
 4. save that refresh token in a Windows-protected secret store
 
-The browser flow is not wired into the GUI yet, but the backend is now aligned with that model.
+The `Google Drive` browser flow is now available from the GUI `Setup` tab through `Connect Google Drive`.
+The application loads app-level OAuth settings from a local non-committed file `config/cloud_oauth.env` when present.
+Start by copying `config/cloud_oauth.env.example` to `config/cloud_oauth.env` and filling in the Google OAuth client values for this application.
 
 At runtime, the uploader resolves credentials in this order:
 
 1. a saved encrypted local secret for the configured cloud connection
 2. environment-variable fallback for CLI or development use
 
-Current environment-variable fallback:
+Minimal local OAuth config:
+
+```env
+PHOTO_PROCESSOR_GDRIVE_CLIENT_ID=...
+PHOTO_PROCESSOR_GDRIVE_CLIENT_SECRET=...
+```
+
+Current environment-variable fallback for CLI and development use:
 
 ```powershell
 $env:PHOTO_PROCESSOR_GDRIVE_CLIENT_ID = "..."
 $env:PHOTO_PROCESSOR_GDRIVE_REFRESH_TOKEN = "..."
-$env:PHOTO_PROCESSOR_GDRIVE_CLIENT_SECRET = "..."  # optional for desktop-style OAuth clients
+$env:PHOTO_PROCESSOR_GDRIVE_CLIENT_SECRET = "..."  # required when the Google OAuth client expects a secret
 ```
 
 The current GUI is organized around four tabs:
 
 - `Setup` for source and output folders plus preset selection
+- `Setup` also includes cloud export configuration, provider cards for `Google Drive` and `Dropbox`, a connection-status indicator, connected-account details, remote-folder input, and `Google Drive` connect/disconnect actions
 - `Setup` also includes input-format checkboxes and output extension selection
 - `Processing` for resize, crop anchor, auto-rotate, and output constraints
 - `Manual` for one-file visual preview with alternate fit modes, output-name preview, and save-current behavior

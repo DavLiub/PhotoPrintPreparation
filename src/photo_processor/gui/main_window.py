@@ -1,18 +1,21 @@
 from __future__ import annotations
 
-from pathlib import Path
 from dataclasses import replace
+from pathlib import Path
 
 from photo_processor.app.controllers.processing_controller import ProcessingController
 from photo_processor.app.controllers.settings_controller import SettingsController
 from photo_processor.app.i18n.translator import Translator
+from photo_processor.app.use_cases.connect_google_drive import ConnectGoogleDriveUseCase, GoogleDriveConnection
+from photo_processor.app.use_cases.disconnect_google_drive import DisconnectGoogleDriveUseCase
 from photo_processor.config.presets import PRESETS
-from photo_processor.core.output_policy import ConflictStrategy
+from photo_processor.core.cloud_upload import CloudProvider, CloudUploadSettings
 from photo_processor.core.image_task import ImageTask
+from photo_processor.core.output_policy import ConflictStrategy
 from photo_processor.core.settings import CropAnchor, ProcessingSettings, ResizeMode, Units
 from photo_processor.gui.dialogs.about_dialog import AboutDialog
 from photo_processor.gui.dialogs.help_dialog import HelpDialog
-from photo_processor.gui.image_preview import pil_image_to_qpixmap
+from photo_processor.gui.google_drive_connect_worker import GoogleDriveConnectWorker
 from photo_processor.gui.icon_provider import (
     about_icon_path,
     app_icon_path,
@@ -22,15 +25,20 @@ from photo_processor.gui.icon_provider import (
     flag_ru_path,
     help_icon_path,
 )
+from photo_processor.gui.image_preview import pil_image_to_qpixmap
 from photo_processor.gui.processing_worker import ProcessingWorker
 from photo_processor.gui.tabs.manual_tab import ManualTab
 from photo_processor.gui.tabs.processing_tab import ProcessingTab
 from photo_processor.gui.tabs.report_tab import ReportTab
 from photo_processor.gui.tabs.setup_tab import SetupTab
+from photo_processor.infra.cloud.google_drive_credentials_resolver import GoogleDriveCredentialsResolver
+from photo_processor.infra.cloud.google_drive_oauth import GoogleDriveOAuthFlow
 from photo_processor.infra.filesystem.file_scanner import scan_supported_images
 from photo_processor.infra.filesystem.output_path_builder import build_output_path
 from photo_processor.infra.imaging.image_processor import ImageProcessor
 from photo_processor.infra.imaging.manual_preview import build_manual_preview
+from photo_processor.infra.secrets.windows_dpapi_store import WindowsDPAPISecretStore
+from photo_processor.infra.settings_storage.storage_paths import resolve_secret_store_dir
 
 try:
     from PySide6.QtCore import QThread, QTimer, QUrl
@@ -64,6 +72,8 @@ try:
             self.processing_controller = processing_controller
             self.processing_thread: QThread | None = None
             self.processing_worker: ProcessingWorker | None = None
+            self.cloud_connect_thread: QThread | None = None
+            self.cloud_connect_worker: GoogleDriveConnectWorker | None = None
             self.processing_dry_run = False
             self.current_run_settings: ProcessingSettings | None = None
             self.manual_files: list[Path] = []
@@ -74,12 +84,14 @@ try:
             self.source_count_timer.timeout.connect(self._refresh_source_file_count)
             self.help_dialog: HelpDialog | None = None
             self.about_dialog: AboutDialog | None = None
+            self.secret_store = WindowsDPAPISecretStore(resolve_secret_store_dir())
+            self.google_drive_credentials_resolver = GoogleDriveCredentialsResolver(secret_store=self.secret_store)
             self._setup_ui()
             self._load_saved_snapshot()
             self._retranslate()
 
         def _setup_ui(self) -> None:
-            self.setMinimumSize(980, 680)
+            self.setMinimumSize(980, 760)
             self.setWindowIcon(build_icon(app_icon_path()))
             self._build_menu()
             self._build_central_widget()
@@ -136,6 +148,8 @@ try:
             self.progress_count_label = QLabel(root)
             self.setup_tab.source_browse_button.clicked.connect(self._choose_source_folder)
             self.setup_tab.output_browse_button.clicked.connect(self._choose_output_folder)
+            self.setup_tab.cloud_connect_button.clicked.connect(self._connect_google_drive)
+            self.setup_tab.cloud_disconnect_button.clicked.connect(self._disconnect_google_drive)
             self.setup_tab.source_path_edit.textEdited.connect(self._enable_source_count_refresh)
             self.setup_tab.source_path_edit.textChanged.connect(self._schedule_source_file_count_refresh)
             for checkbox in self.setup_tab.format_checkboxes.values():
@@ -199,7 +213,7 @@ try:
         def _build_settings(self) -> ProcessingSettings:
             source_folder = Path(self.setup_tab.source_path_edit.text() or ".").resolve()
             output_folder = Path(self.setup_tab.output_path_edit.text() or (source_folder / "processed")).resolve()
-            from photo_processor.core.output_policy import OutputFormat, OutputPolicy
+            from photo_processor.core.output_policy import OutputPolicy
 
             return ProcessingSettings(
                 source_folder=source_folder,
@@ -213,6 +227,13 @@ try:
                 crop_anchor=CropAnchor(self.processing_tab.crop_anchor_combo.currentData()),
                 max_file_size_mb=float(self.processing_tab.max_file_size_spin.value()),
                 source_formats=self.setup_tab.selected_source_formats(),
+                cloud_upload=CloudUploadSettings(
+                    enabled=self.setup_tab.cloud_enabled_check.isChecked(),
+                    provider=self.setup_tab.selected_cloud_provider(),
+                    connection_id=self.setup_tab.cloud_connect_button.property("connection_id"),
+                    account_email=self.setup_tab.cloud_account_value.property("account_email"),
+                    remote_folder=self.setup_tab.cloud_remote_folder_edit.text().strip() or None,
+                ),
                 output_policy=OutputPolicy(
                     filename_suffix=self.setup_tab.suffix_edit.text(),
                     output_format=self.setup_tab.selected_output_format(),
@@ -235,6 +256,10 @@ try:
             self.setup_tab.suffix_edit.setText(snapshot.filename_suffix or "_processed")
             self.setup_tab.set_source_formats(snapshot.source_formats)
             self.setup_tab.set_output_format(snapshot.output_format)
+            self.setup_tab.cloud_enabled_check.setChecked(bool(snapshot.cloud_upload_enabled))
+            self.setup_tab.set_cloud_provider(snapshot.cloud_provider)
+            self.setup_tab.cloud_remote_folder_edit.setText(snapshot.cloud_remote_folder or "")
+            self._set_cloud_connection(snapshot.cloud_connection_id, snapshot.cloud_account_email)
             self._set_combo_data(self.processing_tab.units_combo, snapshot.units or Units.PIXELS.value)
             self._set_combo_data(self.processing_tab.resize_mode_combo, snapshot.resize_mode or ResizeMode.CONTAIN.value)
             self._set_combo_data(self.manual_tab.manual_resize_mode_combo, snapshot.resize_mode or ResizeMode.CONTAIN.value)
@@ -253,6 +278,10 @@ try:
             self.setup_tab.suffix_edit.setText("_processed")
             self.setup_tab.set_source_formats(None)
             self.setup_tab.set_output_format(None)
+            self.setup_tab.cloud_enabled_check.setChecked(False)
+            self.setup_tab.set_cloud_provider(CloudProvider.GOOGLE_DRIVE.value)
+            self.setup_tab.cloud_remote_folder_edit.setText("")
+            self._set_cloud_connection(None, None)
             self._set_combo_data(self.processing_tab.units_combo, Units.PIXELS.value)
             self._set_combo_data(self.processing_tab.resize_mode_combo, ResizeMode.CONTAIN.value)
             self._set_combo_data(self.manual_tab.manual_resize_mode_combo, ResizeMode.CONTAIN.value)
@@ -265,6 +294,13 @@ try:
                 if combo.itemData(index) == value:
                     combo.setCurrentIndex(index)
                     break
+
+        def _set_cloud_connection(self, connection_id: str | None, account_email: str | None) -> None:
+            self.setup_tab.cloud_connect_button.setProperty("connection_id", connection_id)
+            self.setup_tab.cloud_account_value.setProperty("account_email", account_email)
+            self.setup_tab.set_cloud_account_text(account_email or self.translator.text("cloud.status.not_connected"))
+            self.setup_tab.update_connection_status(bool(connection_id), self.translator.text)
+            self.setup_tab.cloud_disconnect_button.setEnabled(bool(connection_id))
 
         def _apply_selected_preset(self) -> None:
             preset_id = self.setup_tab.preset_combo.currentData()
@@ -308,6 +344,68 @@ try:
             if folder:
                 self.setup_tab.output_path_edit.setText(folder)
 
+        def _connect_google_drive(self) -> None:
+            if self.setup_tab.selected_cloud_provider() is not CloudProvider.GOOGLE_DRIVE:
+                return
+            self._set_cloud_connect_state(True)
+            self.statusBar().showMessage(self.translator.text("status.cloud_connecting"))
+            use_case = ConnectGoogleDriveUseCase(
+                oauth_flow=GoogleDriveOAuthFlow(),
+                credentials_resolver=self.google_drive_credentials_resolver,
+            )
+            self.cloud_connect_thread = QThread(self)
+            self.cloud_connect_worker = GoogleDriveConnectWorker(use_case)
+            self.cloud_connect_worker.moveToThread(self.cloud_connect_thread)
+            self.cloud_connect_thread.started.connect(self.cloud_connect_worker.run)
+            self.cloud_connect_worker.finished.connect(self._handle_cloud_connect_finished)
+            self.cloud_connect_worker.failed.connect(self._handle_cloud_connect_failed)
+            self.cloud_connect_worker.finished.connect(self.cloud_connect_thread.quit)
+            self.cloud_connect_worker.failed.connect(self.cloud_connect_thread.quit)
+            self.cloud_connect_thread.finished.connect(self._cleanup_cloud_connect_thread)
+            self.cloud_connect_thread.start()
+
+        def _disconnect_google_drive(self) -> None:
+            DisconnectGoogleDriveUseCase(self.google_drive_credentials_resolver).run(
+                self.setup_tab.cloud_connect_button.property("connection_id")
+            )
+            self._set_cloud_connection(None, None)
+            self._save_settings()
+            self.statusBar().showMessage(self.translator.text("status.cloud_disconnected"))
+
+        def _handle_cloud_connect_finished(self, connection: GoogleDriveConnection) -> None:
+            self._set_cloud_connect_state(False)
+            self.setup_tab.cloud_enabled_check.setChecked(True)
+            self.setup_tab.set_cloud_provider(CloudProvider.GOOGLE_DRIVE.value)
+            self._set_cloud_connection(connection.connection_id, connection.account_email)
+            self._save_settings()
+            self.statusBar().showMessage(self.translator.text("status.cloud_connected"))
+
+        def _handle_cloud_connect_failed(self, message: str) -> None:
+            self._set_cloud_connect_state(False)
+            QMessageBox.critical(
+                self,
+                self.translator.text("dialog.cloud_connect_failed.title"),
+                message,
+            )
+
+        def _cleanup_cloud_connect_thread(self) -> None:
+            if self.cloud_connect_worker is not None:
+                self.cloud_connect_worker.deleteLater()
+            if self.cloud_connect_thread is not None:
+                self.cloud_connect_thread.deleteLater()
+            self.cloud_connect_worker = None
+            self.cloud_connect_thread = None
+
+        def _set_cloud_connect_state(self, is_connecting: bool) -> None:
+            self.setup_tab.cloud_connect_button.setEnabled(not is_connecting)
+            self.setup_tab.cloud_disconnect_button.setEnabled(
+                not is_connecting and bool(self.setup_tab.cloud_connect_button.property("connection_id"))
+            )
+            self.setup_tab.google_drive_button.setEnabled(not is_connecting)
+            self.setup_tab.dropbox_button.setEnabled(not is_connecting)
+            self.setup_tab.cloud_enabled_check.setEnabled(not is_connecting)
+            self.setup_tab.cloud_remote_folder_edit.setEnabled(not is_connecting)
+
         def _start_processing(self) -> None:
             self._run_processing(dry_run=False)
 
@@ -348,6 +446,9 @@ try:
                 f"Processed: {report.processed_files}",
                 f"Skipped: {report.skipped_files}",
                 f"Errors: {report.error_files}",
+                f"Uploaded: {report.uploaded_files}",
+                f"Upload skipped: {report.upload_skipped_files}",
+                f"Upload errors: {report.upload_error_files}",
                 f"Warnings: {report.warning_count}",
                 "",
                 t("report.context"),
@@ -377,8 +478,12 @@ try:
                     quality_suffix = ""
                     if item.output_quality is not None:
                         quality_suffix = f" | q={item.output_quality}"
+                    upload_suffix = ""
+                    if item.upload_result is not None:
+                        upload_target = item.upload_result.remote_url or item.upload_result.remote_path or item.upload_result.file_id or "-"
+                        upload_suffix = f" | upload {item.upload_result.status.value}:{upload_target}"
                     lines.append(
-                        f"{item.status.value.upper():7} {source_name}{size_suffix}{output_suffix}{file_size_suffix}{quality_suffix}"
+                        f"{item.status.value.upper():7} {source_name}{size_suffix}{output_suffix}{file_size_suffix}{quality_suffix}{upload_suffix}"
                     )
 
             small_source_items = [
@@ -424,7 +529,7 @@ try:
                 "\n".join(
                     [
                         self.translator.text("report.summary"),
-                        f"Errors: 1",
+                        "Errors: 1",
                         "",
                         self.translator.text("report.warnings"),
                         message or self.translator.text("dialog.processing_failed.message"),
@@ -454,6 +559,12 @@ try:
             self.setup_tab.source_browse_button.setEnabled(not is_running)
             self.setup_tab.output_browse_button.setEnabled(not is_running)
             self.manual_tab.save_current_button.setEnabled(not is_running)
+            self.setup_tab.cloud_connect_button.setEnabled(not is_running and self.cloud_connect_thread is None)
+            self.setup_tab.cloud_disconnect_button.setEnabled(
+                not is_running
+                and self.cloud_connect_thread is None
+                and bool(self.setup_tab.cloud_connect_button.property("connection_id"))
+            )
             self.tabs.setEnabled(not is_running)
             if is_running:
                 self.statusBar().showMessage(self.translator.text("status.processing_started"))
@@ -587,7 +698,7 @@ try:
                 self._update_progress(0, 0)
 
         def closeEvent(self, event: QCloseEvent) -> None:
-            if self.processing_thread is not None:
+            if self.processing_thread is not None or self.cloud_connect_thread is not None:
                 QMessageBox.warning(
                     self,
                     self.translator.text("dialog.close_while_processing.title"),
@@ -634,6 +745,10 @@ try:
             self.tabs.setTabText(2, t("tab.manual"))
             self.tabs.setTabText(3, t("tab.report"))
             self.setup_tab.retranslate(t)
+            self._set_cloud_connection(
+                self.setup_tab.cloud_connect_button.property("connection_id"),
+                self.setup_tab.cloud_account_value.property("account_email"),
+            )
             self.processing_tab.retranslate(t)
             self.manual_tab.retranslate(t)
             self.report_tab.retranslate(t)

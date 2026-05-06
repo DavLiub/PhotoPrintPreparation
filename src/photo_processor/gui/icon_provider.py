@@ -45,6 +45,16 @@ def flag_he_path() -> str:
     return str(_asset_path("flag_he.svg"))
 
 
+@lru_cache(maxsize=8)
+def google_drive_logo_path() -> str:
+    return str(_asset_path("google_drive.svg"))
+
+
+@lru_cache(maxsize=8)
+def dropbox_logo_path() -> str:
+    return str(_asset_path("dropbox.svg"))
+
+
 def build_icon(path: str):
     try:
         from PySide6.QtGui import QIcon

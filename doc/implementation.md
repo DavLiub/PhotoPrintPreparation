@@ -23,6 +23,7 @@ The current repository implements the first technical slice of the product:
 - Windows DPAPI-backed secret storage foundation in `src/photo_processor/infra/secrets/`
 - desktop GUI scaffold in `src/photo_processor/gui/` and `src/photo_processor/api/gui_app.py`
 - combined `Setup` tab for source/output configuration, simplified menu, and stronger action-button styling
+- `Setup` tab cloud export section with provider cards, connection status, remote folder, and `Google Drive` connect or disconnect actions
 - `Manual` tab for one-file preview, per-file fit-mode switching, output-name preview, and save-current output
 - input-format filtering and output-extension selection in the GUI settings model
 - explicit `auto_rotate` and `crop_anchor` controls in GUI processing settings and settings persistence
@@ -33,6 +34,7 @@ The current repository implements the first technical slice of the product:
 - post-processing orchestration after local batch completion in `src/photo_processor/app/use_cases/post_processing.py`
 - post-processing integration in `src/photo_processor/app/controllers/processing_controller.py`
 - Google Drive uploader backend in `src/photo_processor/infra/cloud/google_drive_uploader.py`, with credential resolution prepared for browser-based OAuth persistence and environment fallback
+- browser-based Google Drive OAuth flow with PKCE, loopback callback, and saved refresh token wiring in `src/photo_processor/infra/cloud/google_drive_oauth.py` and `src/photo_processor/app/use_cases/connect_google_drive.py`
 - upload-aware processing summary counts and per-file remote upload metadata in `src/photo_processor/core/processing_result.py`, `src/photo_processor/core/single_image_result.py`, and `src/photo_processor/app/reporting/report_builder.py`
 - unit and integration tests for math, paths, planning, and one-image processing in `tests/`
 
@@ -42,8 +44,8 @@ The code still has planned gaps:
 
 - GUI packaging and richer pre-processing preview are not implemented yet
 - advanced output policies beyond current strategies are not implemented yet
-- browser-based OAuth flow for cloud upload credentials is not implemented yet
-- GUI configuration flow for cloud upload credentials and provider settings is not implemented yet
+- richer cloud-provider configuration beyond the current Google Drive connect flow is not implemented yet
+- interactive remote-folder browsing, remote-folder picker UI, and upload connection testing are not implemented yet
 - Dropbox upload is planned but not implemented yet
 
 ## Post-processing roadmap status
@@ -115,11 +117,12 @@ The current `Google Drive` slice stays intentionally narrow:
 
 - upload processed files into a configured target folder
 - resolve credentials from a saved protected secret first, with environment variables kept as fallback for CLI and development
+- load application-level OAuth client settings from a local non-committed `config/cloud_oauth.env` file or equivalent environment variables
 - return enough metadata for reporting, such as remote id and link
 - leave local files in place after successful upload by default, with optional deletion after upload when explicitly enabled
 
 The intended authorization flow is browser-based OAuth with a local callback and a stored refresh token.
-The current phase still does not include that interactive connect flow, background sync, or advanced folder browsing UX.
+The current phase now includes that interactive `Google Drive` connect flow in the GUI, with visible connected or disconnected state and connected account details, but still does not include background sync or advanced folder browsing UX.
 
 ### Dropbox follow-up scope
 

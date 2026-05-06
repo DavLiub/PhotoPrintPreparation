@@ -8,3 +8,4 @@ build/
 *.egg-info/
 .venv/
 config/settings.json
+config/cloud_oauth.env
