@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 
+from photo_processor.core.cloud_upload import UploadResult
 from photo_processor.core.image_info import ImageInfo
 
 
@@ -26,6 +27,7 @@ class SingleImageResult:
     output_file_size_bytes: int | None = None
     output_quality: int | None = None
     was_dimension_reduced: bool = False
+    upload_result: UploadResult | None = None
 
     @property
     def success(self) -> bool:

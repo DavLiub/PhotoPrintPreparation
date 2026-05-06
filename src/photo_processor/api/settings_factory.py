@@ -10,6 +10,7 @@ from photo_processor.config.defaults import (
     DEFAULT_WIDTH,
 )
 from photo_processor.config.presets import get_preset
+from photo_processor.core.cloud_upload import CloudProvider, CloudUploadSettings
 from photo_processor.core.output_policy import ConflictStrategy, OutputFormat, OutputPolicy
 from photo_processor.core.settings import CropAnchor, ProcessingSettings, ResizeMode, SUPPORTED_INPUT_FORMATS, Units
 from photo_processor.core.settings_snapshot import SettingsSnapshot
@@ -31,6 +32,15 @@ def _parse_crop_anchor(value: str | None) -> CropAnchor:
         return CropAnchor(value)
     except ValueError:
         return CropAnchor.TOP_LEFT
+
+
+def _parse_cloud_provider(value: str | None) -> CloudProvider | None:
+    if value is None:
+        return None
+    try:
+        return CloudProvider(value)
+    except ValueError:
+        return None
 
 
 def build_settings_from_args(
@@ -92,6 +102,17 @@ def build_settings_from_args(
     )
     source_formats = snapshot.source_formats or SUPPORTED_INPUT_FORMATS
     output_format = OutputFormat(snapshot.output_format) if snapshot.output_format is not None else OutputFormat.JPEG
+    cli_provider = getattr(args, "upload_provider", None)
+    cloud_provider = _parse_cloud_provider(cli_provider if cli_provider is not None else snapshot.cloud_provider)
+    cloud_upload_enabled = (
+        cli_provider is not None
+        if cli_provider is not None
+        else (snapshot.cloud_upload_enabled if snapshot.cloud_upload_enabled is not None else False)
+    )
+    upload_remote_folder = getattr(args, "upload_remote_folder", None)
+    upload_create_share_link = getattr(args, "upload_create_share_link", None)
+    upload_delete_local_after_upload = getattr(args, "upload_delete_local_after_upload", None)
+    upload_overwrite_remote = getattr(args, "upload_overwrite_remote", None)
 
     return ProcessingSettings(
         source_folder=source_folder,
@@ -106,6 +127,36 @@ def build_settings_from_args(
         auto_rotate=auto_rotate,
         max_file_size_mb=max_file_size_mb,
         source_formats=tuple(source_formats),
+        cloud_upload=CloudUploadSettings(
+            enabled=cloud_upload_enabled,
+            provider=cloud_provider,
+            connection_id=snapshot.cloud_connection_id,
+            account_email=snapshot.cloud_account_email,
+            remote_folder=(
+                upload_remote_folder
+                if upload_remote_folder is not None
+                else snapshot.cloud_remote_folder
+            ),
+            create_share_link=(
+                upload_create_share_link
+                if upload_create_share_link is not None
+                else (snapshot.cloud_create_share_link if snapshot.cloud_create_share_link is not None else False)
+            ),
+            delete_local_after_upload=(
+                upload_delete_local_after_upload
+                if upload_delete_local_after_upload is not None
+                else (
+                    snapshot.cloud_delete_local_after_upload
+                    if snapshot.cloud_delete_local_after_upload is not None
+                    else False
+                )
+            ),
+            overwrite_remote=(
+                upload_overwrite_remote
+                if upload_overwrite_remote is not None
+                else (snapshot.cloud_overwrite_remote if snapshot.cloud_overwrite_remote is not None else False)
+            ),
+        ),
         output_policy=OutputPolicy(
             filename_suffix=filename_suffix,
             output_format=output_format,
@@ -131,4 +182,12 @@ def build_snapshot_from_settings(settings: ProcessingSettings, preset_id: str | 
         conflict_strategy=settings.output_policy.conflict_strategy.value,
         source_formats=settings.source_formats,
         output_format=settings.output_policy.output_format.value,
+        cloud_upload_enabled=settings.cloud_upload.enabled,
+        cloud_provider=settings.cloud_upload.provider.value if settings.cloud_upload.provider is not None else None,
+        cloud_connection_id=settings.cloud_upload.connection_id,
+        cloud_account_email=settings.cloud_upload.account_email,
+        cloud_remote_folder=settings.cloud_upload.remote_folder,
+        cloud_create_share_link=settings.cloud_upload.create_share_link,
+        cloud_delete_local_after_upload=settings.cloud_upload.delete_local_after_upload,
+        cloud_overwrite_remote=settings.cloud_upload.overwrite_remote,
     )

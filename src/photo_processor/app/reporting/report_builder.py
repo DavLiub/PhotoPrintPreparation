@@ -11,6 +11,9 @@ def build_processing_report(result: BatchProcessingResult) -> ProcessingReport:
         f"Processed: {result.processed_files}",
         f"Skipped: {result.skipped_files}",
         f"Errors: {result.error_files}",
+        f"Uploaded: {result.uploaded_files}",
+        f"Upload skipped: {result.upload_skipped_files}",
+        f"Upload errors: {result.upload_error_files}",
         f"Warnings: {warning_count}",
     ]
     return ProcessingReport(
@@ -18,6 +21,9 @@ def build_processing_report(result: BatchProcessingResult) -> ProcessingReport:
         processed_files=result.processed_files,
         skipped_files=result.skipped_files,
         error_files=result.error_files,
+        uploaded_files=result.uploaded_files,
+        upload_skipped_files=result.upload_skipped_files,
+        upload_error_files=result.upload_error_files,
         warning_count=warning_count,
         summary_lines=summary_lines,
     )

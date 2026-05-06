@@ -20,3 +20,11 @@ class SettingsSnapshot:
     conflict_strategy: str | None = None
     source_formats: tuple[str, ...] | None = None
     output_format: str | None = None
+    cloud_upload_enabled: bool | None = None
+    cloud_provider: str | None = None
+    cloud_connection_id: str | None = None
+    cloud_account_email: str | None = None
+    cloud_remote_folder: str | None = None
+    cloud_create_share_link: bool | None = None
+    cloud_delete_local_after_upload: bool | None = None
+    cloud_overwrite_remote: bool | None = None

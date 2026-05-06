@@ -9,6 +9,8 @@ class ProcessingReport:
     processed_files: int
     skipped_files: int
     error_files: int
+    uploaded_files: int
+    upload_skipped_files: int
+    upload_error_files: int
     warning_count: int
     summary_lines: list[str] = field(default_factory=list)
-

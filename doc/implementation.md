@@ -17,8 +17,10 @@ The current repository implements the first technical slice of the product:
 - presentation summary model in `src/photo_processor/core/processing_report.py`
 - image metadata normalization in `src/photo_processor/core/image_info.py`
 - output behavior modeling in `src/photo_processor/core/output_policy.py`
+- provider-neutral cloud upload settings and upload result models in `src/photo_processor/core/cloud_upload.py`
 - preset registry and preset-aware CLI settings resolution in `src/photo_processor/config/presets.py` and `src/photo_processor/api/settings_factory.py`
 - JSON settings persistence in `src/photo_processor/infra/settings_storage/`, with runtime storage resolved to `%ProgramData%\PhotoPrintPreparation\settings.json` on Windows
+- Windows DPAPI-backed secret storage foundation in `src/photo_processor/infra/secrets/`
 - desktop GUI scaffold in `src/photo_processor/gui/` and `src/photo_processor/api/gui_app.py`
 - combined `Setup` tab for source/output configuration, simplified menu, and stronger action-button styling
 - `Manual` tab for one-file preview, per-file fit-mode switching, output-name preview, and save-current output
@@ -28,6 +30,10 @@ The current repository implements the first technical slice of the product:
 - searchable GUI Help dialog with parameter descriptions and external reference links
 - translation layer in `src/photo_processor/app/i18n/` and `src/photo_processor/config/translations.py` with `en`, `ru`, and `he`
 - quality warnings for source images smaller than the target frame
+- post-processing orchestration after local batch completion in `src/photo_processor/app/use_cases/post_processing.py`
+- post-processing integration in `src/photo_processor/app/controllers/processing_controller.py`
+- Google Drive uploader backend in `src/photo_processor/infra/cloud/google_drive_uploader.py`, with credential resolution prepared for browser-based OAuth persistence and environment fallback
+- upload-aware processing summary counts and per-file remote upload metadata in `src/photo_processor/core/processing_result.py`, `src/photo_processor/core/single_image_result.py`, and `src/photo_processor/app/reporting/report_builder.py`
 - unit and integration tests for math, paths, planning, and one-image processing in `tests/`
 
 ## Planned next
@@ -36,17 +42,21 @@ The code still has planned gaps:
 
 - GUI packaging and richer pre-processing preview are not implemented yet
 - advanced output policies beyond current strategies are not implemented yet
+- browser-based OAuth flow for cloud upload credentials is not implemented yet
+- GUI configuration flow for cloud upload credentials and provider settings is not implemented yet
+- Dropbox upload is planned but not implemented yet
 
-## Planned post-processing roadmap
+## Post-processing roadmap status
 
-The next major extension under discussion is post-processing for cloud export of already processed photos.
+The repository now includes the first backend slice of post-processing for cloud export of already processed photos.
 
-This is not implemented yet. The intended direction is:
+The current implemented direction is:
 
 1. keep local image generation as the primary processing outcome
 2. add a separate post-processing stage after local files are written
 3. upload only successfully generated output files
 4. report upload success and upload failure independently from local processing success
+5. keep long-lived cloud secrets outside the normal settings snapshot
 
 ### Target architecture
 
@@ -77,12 +87,14 @@ Image generation and cloud publication are separate responsibilities and should 
    - keep local processing success separate from remote publication success
 4. Add settings persistence for cloud export:
    - keep normal UI settings in the existing settings snapshot
-   - store secrets and tokens separately from general settings when practical
+   - store secrets and tokens separately from general settings
+   - use Windows-protected storage for refresh tokens instead of plain JSON settings
 5. Add minimal GUI support:
    - enable or disable cloud upload
    - choose provider
    - configure remote folder
-   - test connection or credentials
+   - connect through browser-based OAuth
+   - show connected account and test connection
 6. Extend reporting:
    - count uploaded files
    - count upload failures
@@ -99,14 +111,15 @@ This order matters because `Google Drive` is the first target and should shape t
 
 ### Google Drive first-phase scope
 
-The first `Google Drive` slice should stay intentionally narrow:
+The current `Google Drive` slice stays intentionally narrow:
 
 - upload processed files into a configured target folder
-- use stored credentials or tokens instead of a full in-app OAuth wizard
+- resolve credentials from a saved protected secret first, with environment variables kept as fallback for CLI and development
 - return enough metadata for reporting, such as remote id and link
-- leave local files in place after successful upload
+- leave local files in place after successful upload by default, with optional deletion after upload when explicitly enabled
 
-The first phase should not depend on deleting local files, background sync, or advanced folder browsing UX.
+The intended authorization flow is browser-based OAuth with a local callback and a stored refresh token.
+The current phase still does not include that interactive connect flow, background sync, or advanced folder browsing UX.
 
 ### Dropbox follow-up scope
 

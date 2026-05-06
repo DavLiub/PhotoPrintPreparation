@@ -11,6 +11,7 @@ from photo_processor.config.defaults import (
     DEFAULT_MAX_FILE_SIZE_MB,
     DEFAULT_WIDTH,
 )
+from photo_processor.core.cloud_upload import CloudUploadSettings
 from photo_processor.core.output_policy import OutputFormat, OutputPolicy
 
 
@@ -50,6 +51,7 @@ class ProcessingSettings:
     max_file_size_mb: float = DEFAULT_MAX_FILE_SIZE_MB
     keep_aspect_ratio: bool = True
     source_formats: tuple[str, ...] = field(default_factory=lambda: SUPPORTED_INPUT_FORMATS)
+    cloud_upload: CloudUploadSettings = field(default_factory=CloudUploadSettings)
     output_policy: OutputPolicy = field(
         default_factory=lambda: OutputPolicy(
             filename_suffix=DEFAULT_FILENAME_SUFFIX,

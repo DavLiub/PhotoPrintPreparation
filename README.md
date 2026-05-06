@@ -16,6 +16,7 @@ Version `0.1` focuses on the non-UI foundation:
 - batch report structure
 - preset-based processing scenarios
 - desktop GUI with `en/ru/he` localization support
+- post-processing cloud export backend with initial `Google Drive` support in the CLI flow
 
 Preview and richer live processing behavior are still incomplete, but the GUI now supports folder selection, full batch start, and report display.
 
@@ -29,10 +30,33 @@ $env:PYTHONPATH = "src"
 python -m unittest discover -s tests -v
 python -m photo_processor --source "C:\Photos" --output "C:\Photos\processed"
 python -m photo_processor --source "C:\Photos" --preset print_10x15
+python -m photo_processor --source "C:\Photos" --upload-provider google_drive --upload-remote-folder "<drive-folder-id>"
 python -m photo_processor.api.gui_app
 ```
 
 The CLI and GUI now persist last-used settings in `%ProgramData%\PhotoPrintPreparation\settings.json`.
+
+The target authentication model for `Google Drive` is browser-based OAuth:
+
+1. open the browser for Google sign-in
+2. receive an authorization code on a local callback
+3. exchange it for a refresh token
+4. save that refresh token in a Windows-protected secret store
+
+The browser flow is not wired into the GUI yet, but the backend is now aligned with that model.
+
+At runtime, the uploader resolves credentials in this order:
+
+1. a saved encrypted local secret for the configured cloud connection
+2. environment-variable fallback for CLI or development use
+
+Current environment-variable fallback:
+
+```powershell
+$env:PHOTO_PROCESSOR_GDRIVE_CLIENT_ID = "..."
+$env:PHOTO_PROCESSOR_GDRIVE_REFRESH_TOKEN = "..."
+$env:PHOTO_PROCESSOR_GDRIVE_CLIENT_SECRET = "..."  # optional for desktop-style OAuth clients
+```
 
 The current GUI is organized around four tabs:
 

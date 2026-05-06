@@ -6,6 +6,7 @@ import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from photo_processor.api.settings_factory import build_settings_from_args, build_snapshot_from_settings
+from photo_processor.core.cloud_upload import CloudProvider
 from photo_processor.core.output_policy import ConflictStrategy, OutputFormat
 from photo_processor.core.settings import CropAnchor, ResizeMode, SUPPORTED_INPUT_FORMATS, Units
 from photo_processor.core.settings_snapshot import SettingsSnapshot
@@ -26,6 +27,11 @@ class SettingsFactoryTestCase(unittest.TestCase):
                 max_file_size_mb=None,
                 suffix="_processed",
                 conflict_strategy=ConflictStrategy.ADD_COUNTER.value,
+                upload_provider=None,
+                upload_remote_folder=None,
+                upload_create_share_link=None,
+                upload_delete_local_after_upload=None,
+                upload_overwrite_remote=None,
             )
         )
 
@@ -36,6 +42,7 @@ class SettingsFactoryTestCase(unittest.TestCase):
         self.assertEqual(settings.crop_anchor, CropAnchor.TOP_LEFT)
         self.assertEqual(settings.source_formats, SUPPORTED_INPUT_FORMATS)
         self.assertEqual(settings.output_policy.output_format, OutputFormat.JPEG)
+        self.assertFalse(settings.cloud_upload.enabled)
 
     def test_factory_uses_preset_values(self) -> None:
         settings = build_settings_from_args(
@@ -51,6 +58,11 @@ class SettingsFactoryTestCase(unittest.TestCase):
                 max_file_size_mb=None,
                 suffix="_processed",
                 conflict_strategy=ConflictStrategy.ADD_COUNTER.value,
+                upload_provider=None,
+                upload_remote_folder=None,
+                upload_create_share_link=None,
+                upload_delete_local_after_upload=None,
+                upload_overwrite_remote=None,
             )
         )
 
@@ -76,6 +88,11 @@ class SettingsFactoryTestCase(unittest.TestCase):
                 max_file_size_mb=3.0,
                 suffix="_done",
                 conflict_strategy=ConflictStrategy.SKIP.value,
+                upload_provider=None,
+                upload_remote_folder=None,
+                upload_create_share_link=None,
+                upload_delete_local_after_upload=None,
+                upload_overwrite_remote=None,
             )
         )
 
@@ -102,6 +119,11 @@ class SettingsFactoryTestCase(unittest.TestCase):
                 max_file_size_mb=None,
                 suffix=None,
                 conflict_strategy=None,
+                upload_provider=None,
+                upload_remote_folder=None,
+                upload_create_share_link=None,
+                upload_delete_local_after_upload=None,
+                upload_overwrite_remote=None,
             ),
             saved_snapshot=SettingsSnapshot(
                 width=1600,
@@ -116,6 +138,12 @@ class SettingsFactoryTestCase(unittest.TestCase):
                 conflict_strategy=ConflictStrategy.SKIP.value,
                 source_formats=(".jpg", ".png"),
                 output_format=OutputFormat.JPEG.value,
+                cloud_upload_enabled=True,
+                cloud_provider=CloudProvider.GOOGLE_DRIVE.value,
+                cloud_connection_id="google-primary",
+                cloud_account_email="user@example.com",
+                cloud_remote_folder="folder-1",
+                cloud_create_share_link=True,
             ),
         )
 
@@ -129,6 +157,12 @@ class SettingsFactoryTestCase(unittest.TestCase):
         self.assertEqual(settings.output_policy.conflict_strategy, ConflictStrategy.SKIP)
         self.assertEqual(settings.source_formats, (".jpg", ".png"))
         self.assertEqual(settings.output_policy.output_format, OutputFormat.JPEG)
+        self.assertTrue(settings.cloud_upload.enabled)
+        self.assertEqual(settings.cloud_upload.provider, CloudProvider.GOOGLE_DRIVE)
+        self.assertEqual(settings.cloud_upload.connection_id, "google-primary")
+        self.assertEqual(settings.cloud_upload.account_email, "user@example.com")
+        self.assertEqual(settings.cloud_upload.remote_folder, "folder-1")
+        self.assertTrue(settings.cloud_upload.create_share_link)
 
     def test_build_snapshot_from_settings_serializes_runtime_values(self) -> None:
         settings = build_settings_from_args(
@@ -144,6 +178,11 @@ class SettingsFactoryTestCase(unittest.TestCase):
                 max_file_size_mb=2.5,
                 suffix="_done",
                 conflict_strategy=ConflictStrategy.OVERWRITE.value,
+                upload_provider=CloudProvider.GOOGLE_DRIVE.value,
+                upload_remote_folder="folder-2",
+                upload_create_share_link=True,
+                upload_delete_local_after_upload=False,
+                upload_overwrite_remote=True,
             )
         )
 
@@ -159,3 +198,11 @@ class SettingsFactoryTestCase(unittest.TestCase):
         self.assertEqual(snapshot.conflict_strategy, ConflictStrategy.OVERWRITE.value)
         self.assertEqual(snapshot.source_formats, SUPPORTED_INPUT_FORMATS)
         self.assertEqual(snapshot.output_format, OutputFormat.JPEG.value)
+        self.assertTrue(snapshot.cloud_upload_enabled)
+        self.assertEqual(snapshot.cloud_provider, CloudProvider.GOOGLE_DRIVE.value)
+        self.assertIsNone(snapshot.cloud_connection_id)
+        self.assertIsNone(snapshot.cloud_account_email)
+        self.assertEqual(snapshot.cloud_remote_folder, "folder-2")
+        self.assertTrue(snapshot.cloud_create_share_link)
+        self.assertFalse(snapshot.cloud_delete_local_after_upload)
+        self.assertTrue(snapshot.cloud_overwrite_remote)
