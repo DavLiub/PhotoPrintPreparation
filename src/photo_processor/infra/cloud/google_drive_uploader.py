@@ -140,15 +140,45 @@ class GoogleDriveUploader:
         )
 
     def get_folder_path(self, folder_id: str | None) -> str:
+        return " / ".join(folder.name for folder in self.get_folder_chain(folder_id))
+
+    def get_folder_chain(self, folder_id: str | None) -> list[GoogleDriveFolder]:
         folder = self.get_folder(folder_id)
-        names = [folder.name]
+        chain = [folder]
         parent_id = folder.parent_id
         while parent_id is not None:
             parent = self.get_folder(parent_id)
-            names.append(parent.name)
+            chain.append(parent)
             parent_id = parent.parent_id
-        names.reverse()
-        return " / ".join(names)
+        chain.reverse()
+        return chain
+
+    def create_folder(self, name: str, parent_id: str | None = None) -> GoogleDriveFolder:
+        folder_name = name.strip()
+        if not folder_name:
+            raise RuntimeError("Google Drive folder name cannot be empty.")
+        access_token = self._refresh_access_token()
+        metadata: dict[str, object] = {
+            "name": folder_name,
+            "mimeType": "application/vnd.google-apps.folder",
+        }
+        if parent_id not in (None, "", "root"):
+            metadata["parents"] = [parent_id]
+        data = self._request_json(
+            method="POST",
+            url="https://www.googleapis.com/drive/v3/files?supportsAllDrives=true&fields=id,name,parents",
+            headers={
+                "Authorization": f"Bearer {access_token}",
+                "Content-Type": "application/json",
+            },
+            body=json.dumps(metadata).encode("utf-8"),
+        )
+        parents = data.get("parents") or []
+        return GoogleDriveFolder(
+            folder_id=str(data["id"]),
+            name=str(data.get("name") or folder_name),
+            parent_id=str(parents[0]) if parents else ("root" if parent_id in (None, "", "root") else parent_id),
+        )
 
     def get_or_create_folder_share_link(self, folder_id: str | None) -> str | None:
         if folder_id in (None, "", "root"):

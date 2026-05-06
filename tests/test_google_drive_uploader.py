@@ -99,6 +99,35 @@ class GoogleDriveUploaderFolderTestCase(unittest.TestCase):
         self.assertEqual(len(calls), 2)
         self.assertFalse(any(method == "POST" and "/permissions" in url for method, url in calls))
 
+    def test_create_folder_posts_google_drive_folder_metadata(self) -> None:
+        calls: list[tuple[str, str, bytes | None]] = []
+
+        def requester(method: str, url: str, headers: dict[str, str], body: bytes | None) -> tuple[int, bytes]:
+            calls.append((method, url, body))
+            if "oauth2.googleapis.com/token" in url:
+                return 200, json.dumps({"access_token": "token-123"}).encode("utf-8")
+            if method == "POST" and "drive/v3/files?supportsAllDrives=true&fields=id,name,parents" in url:
+                payload = json.loads((body or b"{}").decode("utf-8"))
+                self.assertEqual(payload["name"], "New Folder")
+                self.assertEqual(payload["mimeType"], "application/vnd.google-apps.folder")
+                self.assertEqual(payload["parents"], ["folder-parent"])
+                return 200, json.dumps({"id": "folder-new", "name": "New Folder", "parents": ["folder-parent"]}).encode(
+                    "utf-8"
+                )
+            raise AssertionError(f"Unexpected URL: {url}")
+
+        uploader = GoogleDriveUploader(
+            GoogleDriveCredentials(client_id="client-123", refresh_token="refresh-token"),
+            requester=requester,
+        )
+
+        folder = uploader.create_folder("New Folder", "folder-parent")
+
+        self.assertEqual(folder.folder_id, "folder-new")
+        self.assertEqual(folder.name, "New Folder")
+        self.assertEqual(folder.parent_id, "folder-parent")
+        self.assertEqual(len(calls), 2)
+
 
 if __name__ == "__main__":
     unittest.main()

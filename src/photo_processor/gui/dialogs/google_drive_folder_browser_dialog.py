@@ -7,10 +7,12 @@ try:
     from PySide6.QtWidgets import (
         QDialog,
         QHBoxLayout,
+        QInputDialog,
         QLabel,
-        QListWidget,
-        QListWidgetItem,
+        QMessageBox,
         QPushButton,
+        QTreeWidget,
+        QTreeWidgetItem,
         QVBoxLayout,
         QWidget,
     )
@@ -30,44 +32,66 @@ try:
             self._selected_folder_name: str | None = None
             self._selected_folder_path: str | None = None
             self.current_folder = self._resolve_initial_folder(initial_folder_id)
+            self._placeholder_marker = "__placeholder__"
             self._build_ui()
-            self._reload_children()
             self._retranslate()
+            self._reload_tree()
 
         def _build_ui(self) -> None:
             self.setModal(True)
-            self.resize(620, 460)
+            self.resize(700, 520)
             layout = QVBoxLayout(self)
+            layout.setContentsMargins(14, 14, 14, 14)
+            layout.setSpacing(10)
 
-            self.current_folder_label = QLabel(self)
-            self.current_folder_label.setWordWrap(True)
-            self.current_folder_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
+            self.breadcrumbs_widget = QWidget(self)
+            self.breadcrumbs_row = QHBoxLayout(self.breadcrumbs_widget)
+            self.breadcrumbs_row.setContentsMargins(0, 0, 0, 0)
+            self.breadcrumbs_row.setSpacing(4)
 
-            self.folder_list = QListWidget(self)
-            self.folder_list.currentItemChanged.connect(lambda *_args: self._refresh_buttons())
-            self.folder_list.itemDoubleClicked.connect(self._open_selected_folder)
+            self.folder_tree = QTreeWidget(self)
+            self.folder_tree.setHeaderHidden(True)
+            self.folder_tree.setRootIsDecorated(True)
+            self.folder_tree.setAlternatingRowColors(True)
+            self.folder_tree.currentItemChanged.connect(lambda *_args: self._refresh_buttons())
+            self.folder_tree.itemExpanded.connect(self._ensure_children_loaded)
+            self.folder_tree.itemDoubleClicked.connect(self._open_selected_folder)
+            self.folder_tree.setStyleSheet(
+                "QTreeWidget { border: 1px solid #e2e8f0; border-radius: 10px; background: #ffffff; }"
+            )
+
+            self.empty_state_label = QLabel(self)
+            self.empty_state_label.setAlignment(Qt.AlignCenter)
+            self.empty_state_label.setWordWrap(True)
+            self.empty_state_label.setStyleSheet(
+                "QLabel { padding: 18px; border: 1px dashed #cbd5e1; border-radius: 10px; background: #f8fafc; color: #64748b; }"
+            )
 
             actions_widget = QWidget(self)
             actions_row = QHBoxLayout(actions_widget)
             actions_row.setContentsMargins(0, 0, 0, 0)
             actions_row.setSpacing(8)
             self.up_button = QPushButton(actions_widget)
+            self.create_button = QPushButton(actions_widget)
             self.open_button = QPushButton(actions_widget)
             self.select_button = QPushButton(actions_widget)
             self.cancel_button = QPushButton(actions_widget)
             actions_row.addWidget(self.up_button)
+            actions_row.addWidget(self.create_button)
             actions_row.addWidget(self.open_button)
             actions_row.addStretch(1)
             actions_row.addWidget(self.select_button)
             actions_row.addWidget(self.cancel_button)
 
             self.up_button.clicked.connect(self._go_up)
+            self.create_button.clicked.connect(self._create_folder)
             self.open_button.clicked.connect(self._open_selected_folder)
             self.select_button.clicked.connect(self._select_current_folder)
             self.cancel_button.clicked.connect(self.reject)
 
-            layout.addWidget(self.current_folder_label)
-            layout.addWidget(self.folder_list, 1)
+            layout.addWidget(self.breadcrumbs_widget)
+            layout.addWidget(self.folder_tree, 1)
+            layout.addWidget(self.empty_state_label)
             layout.addWidget(actions_widget)
 
         def _resolve_initial_folder(self, initial_folder_id: str | None) -> GoogleDriveFolder:
@@ -76,45 +100,130 @@ try:
             except Exception:
                 return self.uploader.get_folder("root")
 
-        def _reload_children(self) -> None:
-            self.folder_list.clear()
-            for folder in self.uploader.list_folders(self.current_folder.folder_id):
-                item = QListWidgetItem(folder.name, self.folder_list)
-                item.setData(Qt.UserRole, folder)
-            self._refresh_current_folder_label()
+        def _reload_tree(self) -> None:
+            self.folder_tree.clear()
+            first_item: QTreeWidgetItem | None = None
+            for child_folder in self.uploader.list_folders(self.current_folder.folder_id):
+                item = self._build_tree_item(child_folder)
+                self.folder_tree.addTopLevelItem(item)
+                if first_item is None:
+                    first_item = item
+            if first_item is not None:
+                self.folder_tree.setCurrentItem(first_item)
+            self._refresh_breadcrumbs()
+            self._refresh_empty_state()
             self._refresh_buttons()
 
-        def _refresh_current_folder_label(self) -> None:
-            label = self.current_folder.name
-            if self.current_folder.folder_id == "root":
-                label = self.t("dialog.cloud_browse.current_folder.root")
-            self.current_folder_label.setText(
-                self.t("dialog.cloud_browse.current_folder").format(
-                    name=label,
-                    folder_id=self.current_folder.folder_id,
-                )
-            )
+        def _refresh_breadcrumbs(self) -> None:
+            while self.breadcrumbs_row.count():
+                item = self.breadcrumbs_row.takeAt(0)
+                widget = item.widget()
+                if widget is not None:
+                    widget.hide()
+                    widget.setParent(None)
+                    widget.deleteLater()
+
+            chain = self.uploader.get_folder_chain(self.current_folder.folder_id)
+            for index, folder in enumerate(chain):
+                label = folder.name
+                if folder.folder_id == "root":
+                    label = self.t("dialog.cloud_browse.current_folder.root")
+                is_last = index == len(chain) - 1
+                if is_last:
+                    current_label = QLabel(label, self.breadcrumbs_widget)
+                    current_label.setStyleSheet("QLabel { color: #0f172a; font-weight: 700; padding: 2px 4px; }")
+                    self.breadcrumbs_row.addWidget(current_label)
+                else:
+                    button = QPushButton(label, self.breadcrumbs_widget)
+                    button.setFlat(True)
+                    button.setStyleSheet(
+                        "QPushButton { color: #2563eb; background: transparent; border: none; padding: 2px 4px; text-align: left; }"
+                        "QPushButton:hover { text-decoration: underline; }"
+                    )
+                    button.clicked.connect(lambda _checked=False, target=folder: self._jump_to_folder(target))
+                    self.breadcrumbs_row.addWidget(button)
+                if index < len(chain) - 1:
+                    separator = QLabel("/", self.breadcrumbs_widget)
+                    separator.setStyleSheet("color: #94a3b8; padding: 0 2px;")
+                    self.breadcrumbs_row.addWidget(separator)
+            self.breadcrumbs_row.addStretch(1)
+
+        def _refresh_empty_state(self) -> None:
+            self.empty_state_label.setVisible(self.folder_tree.topLevelItemCount() == 0)
+
+        def _jump_to_folder(self, folder: GoogleDriveFolder) -> None:
+            self.current_folder = folder
+            self._reload_tree()
 
         def _refresh_buttons(self) -> None:
-            has_selection = self.folder_list.currentItem() is not None
+            has_selection = self.folder_tree.currentItem() is not None
             self.open_button.setEnabled(has_selection)
             self.up_button.setEnabled(self.current_folder.parent_id is not None)
 
-        def _open_selected_folder(self, item: QListWidgetItem | None = None) -> None:
-            current_item = item or self.folder_list.currentItem()
+        def _build_tree_item(self, folder: GoogleDriveFolder) -> QTreeWidgetItem:
+            label = folder.name
+            if folder.folder_id == "root":
+                label = self.t("dialog.cloud_browse.current_folder.root")
+            item = QTreeWidgetItem([label])
+            item.setData(0, Qt.UserRole, folder)
+            item.setData(0, Qt.UserRole + 1, False)
+            item.addChild(QTreeWidgetItem([self._placeholder_marker]))
+            return item
+
+        def _ensure_children_loaded(self, item: QTreeWidgetItem) -> None:
+            folder = item.data(0, Qt.UserRole)
+            if not isinstance(folder, GoogleDriveFolder):
+                return
+            if item.data(0, Qt.UserRole + 1):
+                return
+            item.takeChildren()
+            for child_folder in self.uploader.list_folders(folder.folder_id):
+                item.addChild(self._build_tree_item(child_folder))
+            item.setData(0, Qt.UserRole + 1, True)
+
+        def _open_selected_folder(self, item: QTreeWidgetItem | None = None, *_args) -> None:
+            current_item = item or self.folder_tree.currentItem()
             if current_item is None:
                 return
-            folder = current_item.data(Qt.UserRole)
+            folder = current_item.data(0, Qt.UserRole)
             if not isinstance(folder, GoogleDriveFolder):
                 return
             self.current_folder = folder
-            self._reload_children()
+            self._reload_tree()
 
         def _go_up(self) -> None:
             if self.current_folder.parent_id is None:
                 return
             self.current_folder = self.uploader.get_folder(self.current_folder.parent_id)
-            self._reload_children()
+            self._reload_tree()
+
+        def _create_folder(self) -> None:
+            folder_name, accepted = QInputDialog.getText(
+                self,
+                self.t("dialog.cloud_browse.create.title"),
+                self.t("dialog.cloud_browse.create.prompt"),
+            )
+            if not accepted:
+                return
+            folder_name = folder_name.strip()
+            if not folder_name:
+                QMessageBox.warning(
+                    self,
+                    self.t("dialog.cloud_browse.create.title"),
+                    self.t("dialog.cloud_browse.create.empty_name"),
+                )
+                return
+            try:
+                created_folder = self.uploader.create_folder(folder_name, self.current_folder.folder_id)
+            except Exception as exc:
+                QMessageBox.critical(
+                    self,
+                    self.t("dialog.cloud_browse.create.failed.title"),
+                    str(exc),
+                )
+                return
+            self.current_folder = created_folder
+            self._reload_tree()
 
         def _select_current_folder(self) -> None:
             self._selected_folder_id = self.current_folder.folder_id
@@ -138,10 +247,12 @@ try:
         def _retranslate(self) -> None:
             self.setWindowTitle(self.t("dialog.cloud_browse.title"))
             self.up_button.setText(self.t("dialog.cloud_browse.up"))
+            self.create_button.setText(self.t("dialog.cloud_browse.create"))
             self.open_button.setText(self.t("dialog.cloud_browse.open"))
             self.select_button.setText(self.t("dialog.cloud_browse.select_current"))
             self.cancel_button.setText(self.t("dialog.cloud_browse.cancel"))
-            self._refresh_current_folder_label()
+            self.empty_state_label.setText(self.t("dialog.cloud_browse.empty"))
+            self._refresh_breadcrumbs()
             self._refresh_buttons()
 
 except ImportError:  # pragma: no cover - depends on environment

@@ -312,6 +312,10 @@ try:
             self.setup_tab.set_cloud_account_text(account_email or self.translator.text("cloud.status.not_connected"))
             self.setup_tab.update_connection_status(bool(connection_id), self.translator.text)
             self._refresh_cloud_action_availability()
+            if connection_id and self.setup_tab.selected_cloud_remote_folder_id():
+                self._ensure_cloud_folder_share_link()
+            if not connection_id:
+                self.setup_tab.set_cloud_remote_folder_share_link(None)
 
         def _refresh_cloud_action_availability(self, *_args) -> None:
             is_busy = self.processing_thread is not None or self.cloud_connect_thread is not None
@@ -390,18 +394,36 @@ try:
             if dialog.exec():
                 selected_folder_id = dialog.selected_folder_id()
                 if selected_folder_id:
-                    share_link = uploader.get_or_create_folder_share_link(selected_folder_id)
                     self.setup_tab.set_cloud_remote_folder(
                         selected_folder_id,
                         dialog.selected_folder_path(),
                     )
-                    self.setup_tab.set_cloud_remote_folder_share_link(share_link)
+                    self._ensure_cloud_folder_share_link(uploader)
                 self._save_settings()
                 self.statusBar().showMessage(
                     t("status.cloud_folder_selected").format(
                         name=dialog.selected_folder_path() or dialog.selected_folder_name() or selected_folder_id or "root"
                     )
                 )
+
+        def _ensure_cloud_folder_share_link(self, uploader: GoogleDriveUploader | None = None) -> None:
+            folder_id = self.setup_tab.selected_cloud_remote_folder_id()
+            if not folder_id or folder_id == "root":
+                self.setup_tab.set_cloud_remote_folder_share_link(None)
+                return
+            if not self.setup_tab.google_drive_button.property("connection_id"):
+                return
+            try:
+                active_uploader = uploader
+                if active_uploader is None:
+                    settings = self._build_settings()
+                    credentials = self.google_drive_credentials_resolver.resolve(settings)
+                    active_uploader = GoogleDriveUploader(credentials)
+                share_link = active_uploader.get_or_create_folder_share_link(folder_id)
+                self.setup_tab.set_cloud_remote_folder_share_link(share_link)
+            except Exception:
+                # Keep the folder selection visible even if share-link refresh failed.
+                self.setup_tab.set_cloud_remote_folder_share_link(None)
 
         def _toggle_google_drive_connection(self, is_checked: bool) -> None:
             if is_checked:
