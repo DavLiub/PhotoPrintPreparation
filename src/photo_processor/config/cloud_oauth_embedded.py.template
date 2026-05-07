@@ -1,0 +1,10 @@
+"""
+Copy this file to `src/photo_processor/config/cloud_oauth_embedded.py`
+and fill in the real Google OAuth application credentials locally.
+
+The real `cloud_oauth_embedded.py` file is ignored by git and intended
+to be included only in local builds or release packaging.
+"""
+
+GOOGLE_DRIVE_CLIENT_ID = "your-google-oauth-client-id.apps.googleusercontent.com"
+GOOGLE_DRIVE_CLIENT_SECRET = "your-google-oauth-client-secret"

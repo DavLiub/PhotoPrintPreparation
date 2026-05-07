@@ -44,15 +44,43 @@ The target authentication model for `Google Drive` is browser-based OAuth:
 4. save that refresh token in a Windows-protected secret store
 
 The `Google Drive` browser flow is now available from the GUI `Setup` tab through `Connect Google Drive`.
-The application loads app-level OAuth settings from a local non-committed file `config/cloud_oauth.env` when present.
-Start by copying `config/cloud_oauth.env.example` to `config/cloud_oauth.env` and filling in the Google OAuth client values for this application.
+
+For local release builds, keep the real app-level OAuth settings in a local non-committed module:
+
+```text
+src/photo_processor/config/cloud_oauth_embedded.py
+```
+
+Start by copying:
+
+```text
+src/photo_processor/config/cloud_oauth_embedded.py.template
+```
+
+to:
+
+```text
+src/photo_processor/config/cloud_oauth_embedded.py
+```
+
+and fill in the real Google OAuth client values for this application.
+
+`config/cloud_oauth.env` remains available only as a development override.
 
 At runtime, the uploader resolves credentials in this order:
 
 1. a saved encrypted local secret for the configured cloud connection
-2. environment-variable fallback for CLI or development use
+2. embedded app-level credentials from `src/photo_processor/config/cloud_oauth_embedded.py`
+3. environment-variable fallback for CLI or development use
 
-Minimal local OAuth config:
+Embedded local build-time OAuth config:
+
+```python
+GOOGLE_DRIVE_CLIENT_ID = "..."
+GOOGLE_DRIVE_CLIENT_SECRET = "..."
+```
+
+Optional development `.env` override:
 
 ```env
 PHOTO_PROCESSOR_GDRIVE_CLIENT_ID=...
@@ -147,6 +175,22 @@ Run:
 ```text
 dist\PhotoPrintPreparation\PhotoPrintPreparation.exe
 ```
+
+Before building a portable release, create the local non-committed file:
+
+```text
+src\photo_processor\config\cloud_oauth_embedded.py
+```
+
+using the tracked template:
+
+```text
+src\photo_processor\config\cloud_oauth_embedded.py.template
+```
+
+This local file is ignored by git, but it is imported by the application and becomes part of the packaged binary.
+
+The optional `cloud_oauth.env` sidecar remains supported for development overrides, but it is no longer the recommended release mechanism.
 
 Notes:
 

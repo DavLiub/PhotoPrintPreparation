@@ -9,3 +9,4 @@ build/
 .venv/
 config/settings.json
 config/cloud_oauth.env
+src/photo_processor/config/cloud_oauth_embedded.py

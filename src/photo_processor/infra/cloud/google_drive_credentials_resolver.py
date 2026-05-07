@@ -4,6 +4,7 @@ import json
 import os
 from dataclasses import asdict
 
+from photo_processor.config.cloud_oauth import get_google_drive_client_id, get_google_drive_client_secret
 from photo_processor.core.settings import ProcessingSettings
 from photo_processor.infra.cloud.google_drive_uploader import GoogleDriveCredentials
 from photo_processor.infra.secrets.secret_store import SecretStore
@@ -25,9 +26,9 @@ class GoogleDriveCredentialsResolver:
                     client_secret=data.get("client_secret"),
                 )
 
-        client_id = _required_env("PHOTO_PROCESSOR_GDRIVE_CLIENT_ID")
+        client_id = get_google_drive_client_id()
         refresh_token = _required_env("PHOTO_PROCESSOR_GDRIVE_REFRESH_TOKEN")
-        client_secret = os.getenv("PHOTO_PROCESSOR_GDRIVE_CLIENT_SECRET")
+        client_secret = os.getenv("PHOTO_PROCESSOR_GDRIVE_CLIENT_SECRET") or get_google_drive_client_secret()
         return GoogleDriveCredentials(
             client_id=client_id,
             refresh_token=refresh_token,

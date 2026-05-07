@@ -2,12 +2,11 @@ from __future__ import annotations
 
 import sys
 import ctypes
-from pathlib import Path
 
 from photo_processor.app.controllers.processing_controller import ProcessingController
 from photo_processor.app.controllers.settings_controller import SettingsController
 from photo_processor.app.i18n.translator import Translator
-from photo_processor.bootstrap.env_loader import load_optional_env_file
+from photo_processor.bootstrap.env_loader import load_cloud_oauth_env
 from photo_processor.gui.main_window import MainWindow
 from photo_processor.gui.icon_provider import app_icon_path, build_icon
 from photo_processor.infra.cloud.uploader_factory import build_cloud_uploader
@@ -27,7 +26,7 @@ def run_gui() -> int:
         except Exception:
             pass
 
-    load_optional_env_file(Path("config") / "cloud_oauth.env")
+    load_cloud_oauth_env()
 
     app = QApplication(sys.argv)
     app.setWindowIcon(build_icon(app_icon_path()))

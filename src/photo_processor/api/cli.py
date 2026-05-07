@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import argparse
-from pathlib import Path
 
 from photo_processor.api.settings_factory import build_settings_from_args, build_snapshot_from_settings
 from photo_processor.app.controllers.processing_controller import ProcessingController
-from photo_processor.bootstrap.env_loader import load_optional_env_file
+from photo_processor.bootstrap.env_loader import load_cloud_oauth_env
 from photo_processor.config.presets import get_preset_ids
 from photo_processor.core.cloud_upload import CloudProvider
 from photo_processor.core.output_policy import ConflictStrategy
@@ -67,7 +66,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def run_cli() -> int:
-    load_optional_env_file(Path("config") / "cloud_oauth.env")
+    load_cloud_oauth_env()
     storage = JsonSettingsStorage(resolve_settings_path())
     args = build_parser().parse_args()
     saved_snapshot = storage.load()
