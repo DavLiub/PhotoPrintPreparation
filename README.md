@@ -146,23 +146,34 @@ pip install -r requirements.txt
 pip install pyinstaller
 ```
 
-2. Build a one-folder portable GUI package:
+If you want to run package modules directly before packaging, add `src` to `PYTHONPATH` in the current shell:
 
 ```powershell
-pyinstaller --noconfirm --clean --name PhotoPrintPreparation --windowed --paths src --add-data "src/photo_processor/gui/assets;photo_processor/gui/assets" src/photo_processor/api/gui_app.py
+$env:PYTHONPATH = "$PWD\src"
+```
+
+2. Build a one-folder portable GUI package:
+
+Run the build from the repository root. The tracked spec file generates the embedded OAuth module during packaging, includes it in the bundle, and fails early if the Google OAuth client values are missing.
+
+Optional pre-check:
+
+```powershell
+.\.venv\Scripts\python.exe -m photo_processor.bootstrap.build_embedded_oauth
+Get-Content .\src\photo_processor\config\cloud_oauth_embedded.py
+```
+
+```powershell
+pyinstaller --noconfirm --clean PhotoPrintPreparation.spec
 ```
 
 If `pyinstaller` is not available in `PATH`, use the interpreter from `.venv` directly:
 
 ```powershell
-.\.venv\Scripts\python.exe -m PyInstaller --noconfirm --clean --name PhotoPrintPreparation --windowed --paths src --add-data "src/photo_processor/gui/assets;photo_processor/gui/assets" src/photo_processor/api/gui_app.py
+.\.venv\Scripts\python.exe -m PyInstaller --noconfirm --clean PhotoPrintPreparation.spec
 ```
 
-If the portable bundle starts without `python312.dll`, rebuild with an explicit Python runtime binary:
-
-```powershell
-.\.venv\Scripts\python.exe -m PyInstaller --noconfirm --clean --name PhotoPrintPreparation --windowed --paths src --add-data "src/photo_processor/gui/assets;photo_processor/gui/assets" --add-binary "C:\Python312\python312.dll;." src/photo_processor/api/gui_app.py
-```
+The tracked `PhotoPrintPreparation.spec` automatically adds the matching `python312.dll` from the Python environment when that file exists.
 
 3. The portable build will appear under:
 
@@ -176,7 +187,9 @@ Run:
 dist\PhotoPrintPreparation\PhotoPrintPreparation.exe
 ```
 
-Before building a portable release, create the local non-committed file:
+Before building a portable release, provide local Google OAuth credentials in one of these ways:
+
+1. create the local non-committed file:
 
 ```text
 src\photo_processor\config\cloud_oauth_embedded.py
@@ -188,7 +201,13 @@ using the tracked template:
 src\photo_processor\config\cloud_oauth_embedded.py.template
 ```
 
-This local file is ignored by git, but it is imported by the application and becomes part of the packaged binary.
+2. or place the same values in:
+
+```text
+config\cloud_oauth.env
+```
+
+The build spec uses those local credentials to generate `cloud_oauth_embedded.py`, includes that module in the packaged binary, and stops the build if the credentials are missing.
 
 The optional `cloud_oauth.env` sidecar remains supported for development overrides, but it is no longer the recommended release mechanism.
 

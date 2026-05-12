@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import sys
 
 try:
     from photo_processor.config.cloud_oauth_embedded import GOOGLE_DRIVE_CLIENT_ID as EMBEDDED_GOOGLE_DRIVE_CLIENT_ID
@@ -20,6 +21,11 @@ def get_google_drive_client_id() -> str:
         return value
     if EMBEDDED_GOOGLE_DRIVE_CLIENT_ID:
         return str(EMBEDDED_GOOGLE_DRIVE_CLIENT_ID).strip()
+    if getattr(sys, "frozen", False):
+        raise RuntimeError(
+            "Missing Google Drive app credential. "
+            "This portable build was created without embedded Google OAuth application credentials."
+        )
     raise RuntimeError(
         "Missing Google Drive app credential. "
         f"Set {GOOGLE_DRIVE_CLIENT_ID_ENV} or provide src/photo_processor/config/cloud_oauth_embedded.py for this application."
